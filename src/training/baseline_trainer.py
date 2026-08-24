@@ -50,6 +50,7 @@ class BaselineTrainer:
         return mean_test_loss
 
     def train_model(self) -> None:
+        print(self.model._get_name())
         for epoch in range(self.epochs):
             train_loss = self._train_epoch()
             if epoch % 5 == 0:
