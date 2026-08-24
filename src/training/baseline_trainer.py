@@ -4,7 +4,7 @@ from torch import nn
 from torch import optim
 from torch.utils.data import DataLoader
 
-class BaseTrainer:
+class BaselineTrainer:
     def __init__(
             self, model: nn.Module, 
             train_loader: DataLoader,
