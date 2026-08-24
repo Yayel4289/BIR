@@ -2,9 +2,9 @@ from typing import Callable
 import torch 
 from torch import nn
 from torch.utils.data import DataLoader
-from training.base_trainer import BaseTrainer
+from training.baseline_trainer import BaselineTrainer
 
-class DANN_Trainer(BaseTrainer):
+class DANN_Trainer(BaselineTrainer):
     def __init__(
             self, 
             model: nn.Module, 
