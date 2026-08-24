@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from exps.points_classification.utils.point import Point
-from src.data.data_loader import get_loaders_from_tensors, tensor_train_test_split
+from src.data.data_loader import get_loaders_from_tensors, tensor_train_val_split
 from exps.points_classification.utils.domain import Domain
 
 S = 0 # Source
@@ -70,18 +70,18 @@ def get_X_y_percent_from_target(points: List[Point], percent=2) -> Tuple[torch.T
     return X_target_tensor, y_target_tensor
 
 
-def get_train_test_loaders_from_source(points: List[Point]) -> Tuple[DataLoader, DataLoader]:
+def get_train_val_loaders_from_source(points: List[Point]) -> Tuple[DataLoader, DataLoader]:
     X_tensor, y_tensor = get_X_y_from_domain(points, S)
-    X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = tensor_train_test_split(X_tensor, y_tensor)
-    return get_loaders_from_tensors(X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor)
+    X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor = tensor_train_val_split(X_tensor, y_tensor)
+    return get_loaders_from_tensors(X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor)
 
 
-def get_train_test_loaders_from_source_target(points: List[Point]) -> Tuple[DataLoader, DataLoader]:
+def get_train_val_loaders_from_source_target(points: List[Point]) -> Tuple[DataLoader, DataLoader]:
     X_source_tensor, y_source_tensor = get_X_y_from_domain(points, S, shuffle=False)
     X_target_tensor, y_target_tensor = get_X_y_percent_from_target(points)
     X_tensor, y_tensor = torch.cat(X_source_tensor, X_target_tensor), torch.cat(y_source_tensor, y_target_tensor)
     shuffled_idxs = torch.randperm(len(X_tensor))
     X_tensor, y_tensor = X_tensor[shuffled_idxs], y_tensor[shuffled_idxs]
-    X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = tensor_train_test_split(X_tensor, y_tensor)
-    return get_loaders_from_tensors(X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor)
+    X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor = tensor_train_val_split(X_tensor, y_tensor)
+    return get_loaders_from_tensors(X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor)
 
