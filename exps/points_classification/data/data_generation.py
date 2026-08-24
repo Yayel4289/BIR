@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from exps.points_classification.utils.point import Point
-from src.data.data_loader import get_loaders_from_tensors
+from src.data.data_loader import get_loaders_from_tensors, tensor_train_test_split
 from exps.points_classification.utils.domain import Domain
 
 S = 0 # Source
@@ -45,17 +45,17 @@ def get_X_y_from_domain(points: List[Point], domain: int) -> Tuple[torch.Tensor,
     X_dom = np.asarray([[p.x1, p.x2] for p in filtered_pts])
     y_dom = np.asarray([[p.label, p.domain] for p in filtered_pts])
 
-    shuffled_idx = np.random.permutation(len(X_dom))
-    X_dom = X_dom[shuffled_idx]
-    y_dom = y_dom[shuffled_idx]
+    shuffled_idxs = np.random.permutation(len(X_dom))
+    X_dom = X_dom[shuffled_idxs]
+    y_dom = y_dom[shuffled_idxs]
 
     X_dom_tensor = torch.tensor(X_dom, dtype=torch.float32)
     y_dom_tensor = torch.tensor(y_dom, dtype=torch.float32)
 
     return X_dom_tensor, y_dom_tensor
 
-def get_train_test_loaders_from_domains(points: List[Point]) -> Tuple[DataLoader, DataLoader]:
-    X_train_tensor, y_train_tensor = get_X_y_from_domain(points, S)
-    X_test_tensor, y_test_tensor = get_X_y_from_domain(points, T)
+def get_train_test_loaders_from_source(points: List[Point]) -> Tuple[DataLoader, DataLoader]:
+    X_tensor, y_tensor = get_X_y_from_domain(points, S)
+    X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = tensor_train_test_split(X_tensor, y_tensor)
     return get_loaders_from_tensors(X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor)
 
