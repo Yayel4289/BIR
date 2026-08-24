@@ -1,0 +1,57 @@
+from typing import Callable
+import torch 
+from torch import nn
+from torch import optim
+from torch.utils.data import DataLoader
+
+class BaseTrainer:
+    def __init__(
+            self, model: nn.Module, 
+            train_loader: DataLoader,
+            test_loader: DataLoader,
+            label_loss_function: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], 
+            epochs:int=100, 
+            lr:float=0.01
+    ) -> None:
+        self.model = model 
+        self.train_loader = train_loader
+        self.test_loader = test_loader
+        self.label_loss_function = label_loss_function
+        self.epochs = epochs
+        self.optimizer = optim.Adam(params=self.model.parameters(), lr=lr)
+
+    def _train_epoch(self) -> float: 
+        self.model.train()
+        train_loss = 0
+        for X_train_batch, y_train_batch in self.train_loader:
+            y_pred = self.model(X_train_batch)
+            y_train_batch_labels = y_train_batch[:, 0].view(-1, 1)
+            label_loss = self.label_loss_function(y_pred, y_train_batch_labels)
+
+            self.optimizer.zero_grad()
+            label_loss.backward()
+            self.optimizer.step()
+            
+            train_loss += label_loss.item()
+
+        mean_train_loss = train_loss / len(self.train_loader)
+        return mean_train_loss
+
+    def _evaluate_epoch(self) -> float:
+        self.model.eval()
+        test_loss = 0
+        with torch.inference_mode():
+            for X_test_batch, y_test_batch in self.test_loader:
+                y_pred = self.model(X_test_batch)
+                y_test_batch_labels = y_test_batch[:, 0].view(-1, 1)
+                label_loss = self.label_loss_function(y_pred, y_test_batch_labels)
+                test_loss += label_loss.item()
+        mean_test_loss = test_loss / len(self.test_loader)
+        return mean_test_loss
+
+    def train_model(self) -> None:
+        for epoch in range(self.epochs):
+            train_loss = self._train_epoch()
+            if epoch % 5 == 0:
+                test_loss = self._evaluate_epoch()
+                print(f"Train Loss: {train_loss}", f"Test Loss: {test_loss}", sep="\t")
