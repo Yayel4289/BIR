@@ -51,7 +51,7 @@ def get_source_target_loaders_from_tensors(
     target_train_loader = DataLoader(
         target_train_dataset,
         batch_size=batch_size,
-        sampler=target_sampler
+        sampler=target_sampler,
         shuffle=True
     )
     return source_train_loader, source_val_loader, target_train_loader

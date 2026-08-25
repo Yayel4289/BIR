@@ -10,7 +10,7 @@ class BaselineTrainer:
             model: nn.Module, 
             source_train_loader: DataLoader,
             source_val_loader: DataLoader,
-            label_loss_function: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], 
+            label_loss_function: Callable[torch.Tensor, torch.Tensor], 
             epochs:int=100, 
             lr:float=0.01
     ) -> None:

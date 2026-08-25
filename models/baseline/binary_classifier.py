@@ -9,6 +9,6 @@ class BinaryClassifier(nn.Module):
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
         X = torch.relu(self.f1(X))
-        X = torch.sigmoid(self.f2(X))
-        return X
+        y = torch.sigmoid(self.f2(X))
+        return y
 
