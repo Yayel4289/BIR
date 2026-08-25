@@ -43,7 +43,7 @@ class BaselineTrainer:
         source_val_loss = 0
         with torch.inference_mode():
             for X_source_val_batch, y_source_val_batch in self.source_val_loader:
-                y_source_pred = self.model(X_source_val_batch)
+                y_source_pred = self.model(X_source_val_batch)[0] # [0] INCOMPATIBLE WITH BASELINE
                 y_source_val_batch_labels = y_source_val_batch[:, 0].view(-1, 1)
                 source_label_loss = self.label_loss_function(y_source_pred, y_source_val_batch_labels)
                 source_val_loss += source_label_loss.item()

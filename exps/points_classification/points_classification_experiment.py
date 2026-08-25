@@ -30,7 +30,7 @@ def run_dann(points: List[Point]) -> None:
     dann_trainer.train_model()
 
     plots.plot_pts(points, show_target_label=True)
-    plots.plot_decision_boundary(points, baseline)
+    plots.plot_decision_boundary(points, dann)
     plots.show()
 
 

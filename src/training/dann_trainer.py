@@ -33,11 +33,12 @@ class DANN_Trainer(BaselineTrainer):
         epoch_source_domain_loss = 0
         epoch_target_domain_loss = 0
         epoch_domain_loss = 0
+        epoch_total_loss = 0
         for X_source_train_batch, y_source_train_batch in self.source_train_loader:
             X_target_train_batch, y_target_train_batch = next(iter(self.target_train_loader))
 
-            source_labels_pred, source_domains_pred = self.model.forward(X_source_train_batch)
-            _, target_domains_pred = self.model.forward(X_target_train_batch, only_domain=True)
+            source_labels_pred, source_domains_pred = self.model(X_source_train_batch)
+            _, target_domains_pred = self.model(X_target_train_batch, only_domain=True)
             source_train_batch_labels, source_train_batch_domains = y_source_train_batch[:, 0].view(-1, 1), y_source_train_batch[:, 1].view(-1, 1)
             target_train_batch_domains = y_target_train_batch[:, 1].view(-1, 1)
 
@@ -45,19 +46,19 @@ class DANN_Trainer(BaselineTrainer):
             source_domain_loss = self.domain_loss_function(source_domains_pred, source_train_batch_domains)
             target_domain_loss = self.domain_loss_function(target_domains_pred, target_train_batch_domains)
             domain_loss = source_domain_loss + target_domain_loss
+            total_loss = source_label_loss + domain_loss
 
             self.optimizer.zero_grad()
-            source_label_loss.backward()
-            domain_loss.backward()
+            total_loss.backward()
             self.optimizer.step()
             
             epoch_source_label_loss += source_label_loss.item()
             epoch_source_domain_loss += source_domain_loss.item()
             epoch_target_domain_loss += target_domain_loss.item()
             epoch_domain_loss += domain_loss.item()
+            epoch_total_loss += total_loss.item()
 
-        train_loss = epoch_source_label_loss + epoch_domain_loss
-        mean_train_loss = train_loss / len(self.source_train_loader)
+        mean_train_loss = epoch_total_loss / len(self.source_train_loader)
         mean_source_label_loss = epoch_source_label_loss / len(self.source_train_loader)
         mean_domain_loss = epoch_domain_loss / len(self.source_train_loader)
         mean_source_domain_loss = epoch_source_domain_loss / len(self.source_train_loader)
@@ -72,3 +73,4 @@ class DANN_Trainer(BaselineTrainer):
             if epoch % 5 == 0:
                 val_loss = self._evaluate_epoch()
                 print(f"Train Loss: {train_loss:.3f}", f"Source Label Loss: {source_label_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", f"Source Domain Loss: {source_domain_loss:.3f}", f"Target Domain Loss: {target_domain_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep="\t")
+
