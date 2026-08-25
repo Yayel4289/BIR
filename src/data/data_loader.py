@@ -2,6 +2,8 @@ from typing import Tuple
 import torch 
 from torch.utils.data import TensorDataset, DataLoader
 
+from src.data.cycling_sampler import CyclingSampler
+
 def tensor_train_val_split(
         X_tensor: torch.Tensor, 
         y_tensor: torch.Tensor, 
@@ -39,7 +41,6 @@ def get_source_loaders_from_tensors(
 def get_source_target_loaders_from_tensors(
         X_source_tensor: torch.Tensor, y_source_tensor: torch.Tensor,
         X_target_train_tensor: torch.Tensor, y_target_train_tensor: torch.Tensor,
-        target_sampler,
         batch_size=32
         ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     X_source_train_tensor, y_source_train_tensor, X_source_val_tensor, y_source_val_tensor = tensor_train_val_split(X_source_tensor, y_source_tensor)
@@ -48,11 +49,11 @@ def get_source_target_loaders_from_tensors(
         X_source_val_tensor, y_source_val_tensor
     )
     target_train_dataset = TensorDataset(X_target_train_tensor, y_target_train_tensor)
+    target_sampler = CyclingSampler(target_train_dataset, batch_size=batch_size)
     target_train_loader = DataLoader(
         target_train_dataset,
         batch_size=batch_size,
-        sampler=target_sampler,
-        shuffle=True
+        sampler=target_sampler
     )
     return source_train_loader, source_val_loader, target_train_loader
 

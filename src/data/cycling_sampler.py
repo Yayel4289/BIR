@@ -1,8 +1,7 @@
-from torch.utils.data import Sampler
-import torch
+from torch.utils.data import Sampler, TensorDataset
 
 class CyclingSampler(Sampler):
-    def __init__(self, data_source: torch.Tensor, batch_size: int):
+    def __init__(self, data_source: TensorDataset, batch_size: int):
         self.data_source = data_source
         self.batch_size = batch_size
         self.current_idx = 0

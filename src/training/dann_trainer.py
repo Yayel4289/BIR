@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from models.dann.dann import DANN
-from training.baseline_trainer import BaselineTrainer
+from src.training.baseline_trainer import BaselineTrainer
 
 class DANN_Trainer(BaselineTrainer):
     def __init__(
@@ -25,6 +25,7 @@ class DANN_Trainer(BaselineTrainer):
         self.target_train_loader = target_train_loader
         self.domain_loss_function = domain_loss_function
 
+
     def _train_epoch(self) -> Tuple[float, float, float, float, float]: 
         self.model.train()
         train_loss = 0
@@ -35,9 +36,9 @@ class DANN_Trainer(BaselineTrainer):
         for X_source_train_batch, y_source_train_batch in self.source_train_loader:
             X_target_train_batch, y_target_train_batch = next(iter(self.target_train_loader))
 
-            source_labels_pred, source_domains_pred = self.model(X_source_train_batch)
+            source_labels_pred, source_domains_pred = self.model.forward(X_source_train_batch)
             _, target_domains_pred = self.model.forward(X_target_train_batch, only_domain=True)
-            source_train_batch_labels, source_train_batch_domains = y_source_train_batch[:, 0].view(-1, 1), y_train_batch[:, 1].view(-1, 1)
+            source_train_batch_labels, source_train_batch_domains = y_source_train_batch[:, 0].view(-1, 1), y_source_train_batch[:, 1].view(-1, 1)
             target_train_batch_domains = y_target_train_batch[:, 1].view(-1, 1)
 
             source_label_loss = self.label_loss_function(source_labels_pred, source_train_batch_labels)
@@ -61,5 +62,13 @@ class DANN_Trainer(BaselineTrainer):
         mean_domain_loss = epoch_domain_loss / len(self.source_train_loader)
         mean_source_domain_loss = epoch_source_domain_loss / len(self.source_train_loader)
         mean_target_domain_loss = epoch_target_domain_loss / len(self.source_train_loader)
-        return mean_train_loss, mean_source_label_loss, mean_domain_loss, mean_source_domain_loss, mean_target_domain_loss
+        return mean_train_loss, mean_source_label_loss, mean_domain_loss, mean_source_domain_loss, mean_target_domain_loss    
 
+
+    def train_model(self) -> None:
+        print(self.model._get_name())
+        for epoch in range(self.epochs):
+            train_loss, source_label_loss, domain_loss, source_domain_loss, target_domain_loss = self._train_epoch()
+            if epoch % 5 == 0:
+                val_loss = self._evaluate_epoch()
+                print(f"Train Loss: {train_loss:.3f}", f"Source Label Loss: {source_label_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", f"Source Domain Loss: {source_domain_loss:.3f}", f"Target Domain Loss: {target_domain_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep="\t")

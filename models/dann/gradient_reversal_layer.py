@@ -7,7 +7,6 @@ class GradientReversalLayer(nn.Module):
         self.lambda_hyperparam = lambda_hyperparam
 
     def forward(self, x):
-        # Applique la fonction personnalisée
         return GradientReversalFunction.apply(x, self.lambda_hyperparam)
 
 class GradientReversalFunction(torch.autograd.Function):

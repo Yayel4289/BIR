@@ -1,7 +1,7 @@
 from typing import Tuple
 import torch
 from torch import nn
-from gradient_reversal_layer import GradientReversalLayer
+from models.dann.gradient_reversal_layer import GradientReversalLayer
 
 # Shallow NN from DANN paper
 class DANN(nn.Module):
@@ -14,10 +14,10 @@ class DANN(nn.Module):
         self.grl = GradientReversalLayer(self.grl_lambda)
         self.domain_classifier = nn.Linear(hidden_dim, 1) # discriminator, predicts source domain (0) or target domain (1)
 
-    def forward(self, X: torch.Tensor, only_domain=False) -> Tuple[torch.Tensor, float]:
+    def forward(self, X: torch.Tensor, only_domain=False) -> Tuple[torch.Tensor, torch.Tensor]:
         XF = torch.sigmoid(self.feature_extractor(X))
         label = torch.softmax(self.label_predictor(XF), dim=0) if not only_domain else None
-        XF_grl = self.grl(XF, self.grl_lambda)
-        domain = torch.sigmoid(self.domain_classifier(XF_grl)).item()
+        XF_grl = self.grl(XF)
+        domain = torch.sigmoid(self.domain_classifier(XF_grl))
         return label, domain
 

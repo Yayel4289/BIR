@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from exps.points_classification.utils.point import Point
-from src.data.data_loader import get_source_loaders_from_tensors, tensor_train_val_split
+from src.data.data_loader import get_source_loaders_from_tensors, get_source_target_loaders_from_tensors, tensor_train_val_split
 from exps.points_classification.utils.domain import Domain
 
 S = 0 # Source
@@ -55,10 +55,10 @@ def get_X_y_from_domain(points: List[Point], domain: int, shuffle: bool=True) ->
     return X_dom_tensor, y_dom_tensor
 
 
-def get_X_y_percent_from_target(points: List[Point], percent=2) -> Tuple[torch.Tensor, torch.Tensor]:
+def get_X_y_percent_from_target(points: List[Point], percent=10) -> Tuple[torch.Tensor, torch.Tensor]:
     target_pts = list(filter(lambda p: p.domain == T, points))
-    X_target = np.asarray([[p.x1, p.x2] for p in filtered_pts])
-    y_target = np.asarray([[torch.nan, p.domain] for p in filtered_pts]) # NaN for absence of label in target 
+    X_target = np.asarray([[p.x1, p.x2] for p in target_pts])
+    y_target = np.asarray([[torch.nan, p.domain] for p in target_pts]) # NaN for absence of label in target 
 
     samples_nbr = int(len(X_target) * percent / 100)
     rand_select_idxs = np.random.choice(len(X_target), size=samples_nbr, replace=False)
@@ -75,13 +75,7 @@ def get_train_val_loaders_from_source(points: List[Point]) -> Tuple[DataLoader, 
     X_source_train_tensor, y_source_train_tensor, X_source_val_tensor, y_source_val_tensor = tensor_train_val_split(X_source_tensor, y_source_tensor)
     return get_source_loaders_from_tensors(X_source_train_tensor, y_source_train_tensor, X_source_val_tensor, y_source_val_tensor)
 
-"""
-def get_train_val_loaders_from_source_target(points: List[Point]) -> Tuple[DataLoader, DataLoader]:
+def get_train_val_loaders_from_source_target(points: List[Point]) -> Tuple[DataLoader, DataLoader, DataLoader]:
     X_source_tensor, y_source_tensor = get_X_y_from_domain(points, S, shuffle=False)
-    X_target_tensor, y_target_tensor = get_X_y_percent_from_target(points)
-    X_tensor, y_tensor = torch.cat(X_source_tensor, X_target_tensor), torch.cat(y_source_tensor, y_target_tensor)
-    shuffled_idxs = torch.randperm(len(X_tensor))
-    X_tensor, y_tensor = X_tensor[shuffled_idxs], y_tensor[shuffled_idxs]
-    X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor = tensor_train_val_split(X_tensor, y_tensor)
-    return get_loaders_from_tensors(X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor)
-"""
+    X_target_train_tensor, y_target_train_tensor = get_X_y_percent_from_target(points)
+    return get_source_target_loaders_from_tensors(X_source_tensor, y_source_tensor, X_target_train_tensor, y_target_train_tensor)

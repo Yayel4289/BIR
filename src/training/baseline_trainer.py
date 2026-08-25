@@ -40,15 +40,15 @@ class BaselineTrainer:
 
     def _evaluate_epoch(self) -> float:
         self.model.eval()
-        val_loss = 0
+        source_val_loss = 0
         with torch.inference_mode():
-            for X_val_batch, y_val_batch in self.source_val_loader:
-                y_pred = self.model(X_val_batch)
-                y_val_batch_labels = y_val_batch[:, 0].view(-1, 1)
-                label_loss = self.label_loss_function(y_pred, y_val_batch_labels)
-                val_loss += label_loss.item()
-        mean_val_loss = val_loss / len(self.source_val_loader)
-        return mean_val_loss
+            for X_source_val_batch, y_source_val_batch in self.source_val_loader:
+                y_source_pred = self.model(X_source_val_batch)
+                y_source_val_batch_labels = y_source_val_batch[:, 0].view(-1, 1)
+                source_label_loss = self.label_loss_function(y_source_pred, y_source_val_batch_labels)
+                source_val_loss += source_label_loss.item()
+        mean_source_val_loss = source_val_loss / len(self.source_val_loader)
+        return mean_source_val_loss
 
     def train_model(self) -> None:
         print(self.model._get_name())
@@ -56,4 +56,4 @@ class BaselineTrainer:
             train_loss = self._train_epoch()
             if epoch % 5 == 0:
                 val_loss = self._evaluate_epoch()
-                print(f"Train Loss: {train_loss}", f"Test Loss: {val_loss}", sep="\t")
+                print(f"Train Loss: {train_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep="\t")
