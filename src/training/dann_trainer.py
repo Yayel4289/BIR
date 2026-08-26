@@ -46,6 +46,7 @@ class DANN_Trainer(BaselineTrainer):
             source_domain_loss = self.domain_loss_function(source_domains_pred, source_train_batch_domains)
             target_domain_loss = self.domain_loss_function(target_domains_pred, target_train_batch_domains)
             domain_loss = source_domain_loss + target_domain_loss
+            #total_loss = source_label_loss - self.model.grl_lambda*domain_loss #Is it good ?
             total_loss = source_label_loss + domain_loss
 
             self.optimizer.zero_grad()

@@ -32,7 +32,6 @@ class BaselineTrainer:
             self.optimizer.zero_grad()
             label_loss.backward()
             self.optimizer.step()
-            
             train_loss += label_loss.item()
 
         mean_train_loss = train_loss / len(self.source_train_loader)

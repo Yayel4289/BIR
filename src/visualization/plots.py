@@ -34,8 +34,9 @@ def plot_decision_boundary(points: List[Point], model: nn.Module):
     with torch.inference_mode():
         grid_tensor = torch.tensor(grid_points, dtype=torch.float32)
         predictions, _ = model(grid_tensor)
-        positive_class_probs = predictions[:, 1]
-        predicted_labels = (positive_class_probs >= 0.5).float().numpy().reshape(xx1.shape)
+        #positive_class_probs = predictions[:, 1]
+        #predicted_labels = (positive_class_probs > 0.5).float().numpy().reshape(xx1.shape)
+        predicted_labels = (predictions[:, 1] > predictions[:, 0]).float().numpy().reshape(xx1.shape)
 
     # decision boundary
     plt.contourf(xx1, xx2, predicted_labels, alpha=0.1, colors=["red", "blue"], levels=[0, 0.5, 1])
