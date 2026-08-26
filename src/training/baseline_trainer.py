@@ -13,7 +13,7 @@ class BaselineTrainer:
             label_loss_function: Callable[torch.Tensor, torch.Tensor], 
             epochs:int=100, 
             lr:float=0.01
-    ) -> None:
+            ) -> None:
         self.model = model 
         self.source_train_loader = source_train_loader
         self.source_val_loader = source_val_loader
@@ -25,8 +25,8 @@ class BaselineTrainer:
         self.model.train()
         train_loss = 0
         for X_train_batch, y_train_batch in self.source_train_loader:
-            y_pred = self.model(X_train_batch)
-            y_train_batch_labels = y_train_batch[:, 0].view(-1, 1)
+            y_pred, _ = self.model(X_train_batch)
+            y_train_batch_labels = y_train_batch[:, 0].long()
             label_loss = self.label_loss_function(y_pred, y_train_batch_labels)
 
             self.optimizer.zero_grad()
@@ -43,8 +43,8 @@ class BaselineTrainer:
         source_val_loss = 0
         with torch.inference_mode():
             for X_source_val_batch, y_source_val_batch in self.source_val_loader:
-                y_source_pred = self.model(X_source_val_batch)[0] # [0] INCOMPATIBLE WITH BASELINE
-                y_source_val_batch_labels = y_source_val_batch[:, 0].view(-1, 1)
+                y_source_pred, _ = self.model(X_source_val_batch)
+                y_source_val_batch_labels = y_source_val_batch[:, 0].long()
                 source_label_loss = self.label_loss_function(y_source_pred, y_source_val_batch_labels)
                 source_val_loss += source_label_loss.item()
         mean_source_val_loss = source_val_loss / len(self.source_val_loader)
@@ -56,4 +56,4 @@ class BaselineTrainer:
             train_loss = self._train_epoch()
             if epoch % 5 == 0:
                 val_loss = self._evaluate_epoch()
-                print(f"Train Loss: {train_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep="\t")
+                print(f"Train Loss: {train_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")

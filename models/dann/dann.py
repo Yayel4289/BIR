@@ -15,7 +15,7 @@ class DANN(nn.Module):
 
     def forward(self, X: torch.Tensor, only_domain=False) -> Tuple[torch.Tensor, torch.Tensor]:
         XF = torch.sigmoid(self.feature_extractor(X))
-        label = torch.softmax(self.label_predictor(XF), dim=0) if not only_domain else None
+        label = torch.softmax(self.label_predictor(XF), dim=1) if not only_domain else None
         XF_grl = GradientReversalLayer.apply(XF, self.grl_lambda)
         domain = torch.sigmoid(self.domain_classifier(XF_grl))
         return label, domain

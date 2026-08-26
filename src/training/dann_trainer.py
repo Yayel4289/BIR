@@ -12,8 +12,8 @@ class DANN_Trainer(BaselineTrainer):
             source_train_loader: DataLoader, 
             source_val_loader: DataLoader, 
             target_train_loader: DataLoader,
-            label_loss_function: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], 
-            domain_loss_function: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
+            label_loss_function: Callable[torch.Tensor, torch.Tensor], 
+            domain_loss_function: Callable[torch.Tensor, torch.Tensor],
             epochs: int = 100, 
             lr: float = 0.01
     ) -> None:
@@ -39,8 +39,8 @@ class DANN_Trainer(BaselineTrainer):
 
             source_labels_pred, source_domains_pred = self.model(X_source_train_batch)
             _, target_domains_pred = self.model(X_target_train_batch, only_domain=True)
-            source_train_batch_labels, source_train_batch_domains = y_source_train_batch[:, 0].view(-1, 1), y_source_train_batch[:, 1].view(-1, 1)
-            target_train_batch_domains = y_target_train_batch[:, 1].view(-1, 1)
+            source_train_batch_labels, source_train_batch_domains = y_source_train_batch[:, 0].long(), y_source_train_batch[:, 1].long()
+            target_train_batch_domains = y_target_train_batch[:, 1].long()
 
             source_label_loss = self.label_loss_function(source_labels_pred, source_train_batch_labels)
             source_domain_loss = self.domain_loss_function(source_domains_pred, source_train_batch_domains)
@@ -72,5 +72,4 @@ class DANN_Trainer(BaselineTrainer):
             train_loss, source_label_loss, domain_loss, source_domain_loss, target_domain_loss = self._train_epoch()
             if epoch % 5 == 0:
                 val_loss = self._evaluate_epoch()
-                print(f"Train Loss: {train_loss:.3f}", f"Source Label Loss: {source_label_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", f"Source Domain Loss: {source_domain_loss:.3f}", f"Target Domain Loss: {target_domain_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep="\t")
-
+                print(f"Train Loss: {train_loss:.3f}", f"Source Label Loss: {source_label_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", f"Source Domain Loss: {source_domain_loss:.3f}", f"Target Domain Loss: {target_domain_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")
