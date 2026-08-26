@@ -10,6 +10,7 @@ Options:
 """
 
 from docopt import docopt
+from colorama import Fore, Style
 import sys
 import torch 
 from torch import nn
@@ -45,22 +46,32 @@ def plot_model(points: List[Point], model: nn.Module):
     plots.plot_decision_boundary(points, model)
     plots.show()
 
+def print_help_and_exit(optional_msg=""):
+    if optional_msg:
+        print(optional_msg)
+    print(__doc__)
+    sys.exit(0)
+
+
 if __name__ == "__main__":
     args = docopt(__doc__)
     
-    if args["-h"]:
-        print(__doc__)
-        sys.exit(0)
+    if args["-h"]: print_help_and_exit()
+    model_name = args["--model"]
+    default_model = model_name is None
+    run_func = None
+    if not default_model:
+        run_func = locals().get("run_" + model_name.lower())
+        if run_func is None: 
+            print_help_and_exit(Fore.RED + f"Wrong model name: '{model_name}'" + Style.RESET_ALL)
 
     SEED = 42
     np.random.seed(SEED)
     torch.manual_seed(SEED)
 
     points = generate_domains()
-    if args["--model"] is None:
+    if model_name is None:
         run_baseline(points)
         sys.exit(0)
 
-    run_func = locals().get("run_" + args["--model"].lower())
-    if run_func is not None:
-        run_func(points)
+    run_func(points)
