@@ -36,7 +36,7 @@ def generate_domains() -> List[Point]:
                 [rho * sigma1[i] * sigma2[i], sigma2[i]**2]
             ]
             p_x1, p_x2 = np.random.multivariate_normal(mean=mean, cov=cov_matrix)
-            label = int(p_x2 >= 10)
+            label = int(p_x2 >= 10+np.sin(p_x1*2))
             points.append(Point(p_x1, p_x2, domain.domain_id, label))
 
     return points
