@@ -84,7 +84,10 @@ class DANN_Trainer(BaselineTrainer):
             if self.epoch % 5 == 0:
                 val_loss = self._evaluate_epoch()
                 print(f"Train Loss: {train_loss:.3f}", f"Source Label Loss: {source_label_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", f"Source Domain Loss: {source_domain_loss:.3f}", f"Target Domain Loss: {target_domain_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")
-            self.early_stopping.check_early_stop(val_loss, self.epoch)
+            self.early_stopping.check_early_stop(self.model, val_loss, self.epoch)
             if self.early_stopping.should_stop_training():
                 print(f"Early stopping at epoch {self.epoch}")
                 break
+
+        self.model.load_state_dict(self.early_stopping.get_best_model_state_dict())
+        print(self.early_stopping.best_loss)
