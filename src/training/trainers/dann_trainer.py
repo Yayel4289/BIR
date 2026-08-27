@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from models.dann.dann import DANN
-from src.training.baseline_trainer import BaselineTrainer
+from src.training.trainers.baseline_trainer import BaselineTrainer
 
 class DANN_Trainer(BaselineTrainer):
     def __init__(
@@ -14,7 +14,7 @@ class DANN_Trainer(BaselineTrainer):
             target_train_loader: DataLoader,
             label_loss_function: Callable[torch.Tensor, torch.Tensor], 
             domain_loss_function: Callable[torch.Tensor, torch.Tensor],
-            epochs: int = 100, 
+            epochs: int = 1000, 
             lr: float = 0.01
     ) -> None:
         if source_train_loader.batch_size != target_train_loader.batch_size: # Source/Target proportions : 50/50
@@ -74,3 +74,7 @@ class DANN_Trainer(BaselineTrainer):
             if epoch % 5 == 0:
                 val_loss = self._evaluate_epoch()
                 print(f"Train Loss: {train_loss:.3f}", f"Source Label Loss: {source_label_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", f"Source Domain Loss: {source_domain_loss:.3f}", f"Target Domain Loss: {target_domain_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")
+            self.early_stopping.check_early_stop(val_loss)
+            if self.early_stopping.should_stop_training():
+                print(f"Early stopping at epoch {epoch}")
+                break

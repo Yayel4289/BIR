@@ -21,8 +21,8 @@ from exps.points_classification.utils.point import Point
 from models.baseline.binary_classifier import BinaryClassifier
 from models.dann.dann import DANN
 import src.visualization.plots as plots
-from src.training.baseline_trainer import BaselineTrainer
-from src.training.dann_trainer import DANN_Trainer
+from src.training.trainers.baseline_trainer import BaselineTrainer
+from src.training.trainers.dann_trainer import DANN_Trainer
 
 def run_baseline(points: List[Point]) -> None:
     train_loader, val_loader = get_train_val_loaders_from_source(points)

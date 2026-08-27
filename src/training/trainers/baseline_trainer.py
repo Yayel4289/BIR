@@ -5,6 +5,7 @@ from torch import optim
 from torch.utils.data import DataLoader
 
 from models.abstract_model import AbstractModel
+from src.training.early_stopping import EarlyStopping
 
 class BaselineTrainer:
     def __init__(
@@ -13,7 +14,7 @@ class BaselineTrainer:
             source_train_loader: DataLoader,
             source_val_loader: DataLoader,
             label_loss_function: Callable[torch.Tensor, torch.Tensor], 
-            epochs:int=400, 
+            epochs:int=1000, 
             lr:float=0.01
             ) -> None:
         self.model = model 
@@ -22,6 +23,7 @@ class BaselineTrainer:
         self.label_loss_function = label_loss_function
         self.epochs = epochs
         self.optimizer = optim.Adam(params=self.model.parameters(), lr=lr)
+        self.early_stopping = EarlyStopping()
 
     def _train_epoch(self) -> float: 
         self.model.train()
@@ -55,6 +57,10 @@ class BaselineTrainer:
         print(self.model._get_name())
         for epoch in range(self.epochs):
             train_loss = self._train_epoch()
+            val_loss = self._evaluate_epoch()
             if epoch % 5 == 0:
-                val_loss = self._evaluate_epoch()
                 print(f"Train Loss: {train_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")
+            self.early_stopping.check_early_stop(val_loss)
+            if self.early_stopping.should_stop_training():
+                print(f"Early stopping at epoch {epoch}")
+                break
