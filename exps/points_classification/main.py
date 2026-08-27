@@ -37,7 +37,7 @@ def run_dann(points: List[Point]) -> None:
     source_train_loader, source_val_loader, target_train_loader = get_train_val_loaders_from_source_target(points)
 
     dann = DANN(input_dim=2, output_dim=2)
-    dann_trainer = DANN_Trainer(dann, source_train_loader, source_val_loader, target_train_loader, DANN_label_loss, DANN_domain_loss)
+    dann_trainer = DANN_Trainer(dann, source_train_loader, source_val_loader, target_train_loader, nn.CrossEntropyLoss(), nn.BCEWithLogitsLoss())
     dann_trainer.train_model()
     plot_model(points, dann)
 

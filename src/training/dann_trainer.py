@@ -39,8 +39,8 @@ class DANN_Trainer(BaselineTrainer):
 
             source_labels_pred, source_domains_pred = self.model(X_source_train_batch)
             _, target_domains_pred = self.model(X_target_train_batch, only_domain=True)
-            source_train_batch_labels, source_train_batch_domains = y_source_train_batch[:, 0].long(), y_source_train_batch[:, 1].long()
-            target_train_batch_domains = y_target_train_batch[:, 1].long()
+            source_train_batch_labels, source_train_batch_domains = y_source_train_batch[:, 0].long(), y_source_train_batch[:, 1].view(-1, 1)
+            target_train_batch_domains = y_target_train_batch[:, 1].view(-1, 1)
 
             source_label_loss = self.label_loss_function(source_labels_pred, source_train_batch_labels)
             source_domain_loss = self.domain_loss_function(source_domains_pred, source_train_batch_domains)
