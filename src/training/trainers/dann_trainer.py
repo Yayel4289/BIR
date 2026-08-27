@@ -2,6 +2,7 @@ from typing import Callable
 import torch 
 from torch import nn
 from torch.utils.data import DataLoader
+import numpy as np
 from models.dann.dann import DANN
 from src.training.trainers.baseline_trainer import BaselineTrainer
 
@@ -15,19 +16,28 @@ class DANN_Trainer(BaselineTrainer):
             label_loss_function: Callable[torch.Tensor, torch.Tensor], 
             domain_loss_function: Callable[torch.Tensor, torch.Tensor],
             epochs: int = 1000, 
-            lr: float = 0.01
+            lr: float = 0.01,
+            min_epoch_thresh=0,
+            gamma: float = 10
     ) -> None:
         if source_train_loader.batch_size != target_train_loader.batch_size: # Source/Target proportions : 50/50
             raise ValueError(
                 f"Source and Target DataLoaders must have the same batch size ({source_train_loader.batch_size} and {target_train_loader.batch_size}"
             )
-        super().__init__(model, source_train_loader, source_val_loader, label_loss_function, epochs=epochs, lr=lr)
+        super().__init__(model, source_train_loader, source_val_loader, label_loss_function, epochs=epochs, lr=lr, min_epoch_thresh=min_epoch_thresh)
         self.target_train_loader = target_train_loader
         self.domain_loss_function = domain_loss_function
+        self.gamma = gamma
+
+
+    def compute_grl_lambda(self):
+        p = self.epoch / self.epochs
+        return 2 / (1 + np.exp(-self.gamma * p)) - 1
 
 
     def _train_epoch(self) -> Tuple[float, float, float, float, float]: 
         self.model.train()
+        grl_lambda = self.compute_grl_lambda()
         train_loss = 0
         epoch_source_label_loss = 0
         epoch_source_domain_loss = 0
@@ -37,8 +47,8 @@ class DANN_Trainer(BaselineTrainer):
         for X_source_train_batch, y_source_train_batch in self.source_train_loader:
             X_target_train_batch, y_target_train_batch = next(iter(self.target_train_loader))
 
-            source_labels_pred, source_domains_pred = self.model(X_source_train_batch)
-            _, target_domains_pred = self.model(X_target_train_batch, only_domain=True)
+            source_labels_pred, source_domains_pred = self.model(X_source_train_batch, grl_lambda)
+            _, target_domains_pred = self.model(X_target_train_batch, grl_lambda, only_domain=True)
             source_train_batch_labels, source_train_batch_domains = y_source_train_batch[:, 0].long(), y_source_train_batch[:, 1].view(-1, 1)
             target_train_batch_domains = y_target_train_batch[:, 1].view(-1, 1)
 
@@ -69,12 +79,12 @@ class DANN_Trainer(BaselineTrainer):
 
     def train_model(self) -> None:
         print(self.model._get_name())
-        for epoch in range(self.epochs):
+        for self.epoch in range(self.epochs):
             train_loss, source_label_loss, domain_loss, source_domain_loss, target_domain_loss = self._train_epoch()
-            if epoch % 5 == 0:
+            if self.epoch % 5 == 0:
                 val_loss = self._evaluate_epoch()
                 print(f"Train Loss: {train_loss:.3f}", f"Source Label Loss: {source_label_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", f"Source Domain Loss: {source_domain_loss:.3f}", f"Target Domain Loss: {target_domain_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")
-            self.early_stopping.check_early_stop(val_loss)
+            self.early_stopping.check_early_stop(val_loss, self.epoch)
             if self.early_stopping.should_stop_training():
-                print(f"Early stopping at epoch {epoch}")
+                print(f"Early stopping at epoch {self.epoch}")
                 break

@@ -20,8 +20,8 @@ def generate_domains() -> List[Point]:
     rho = 0.2
 
     domains = [
-        Domain(500, (0, 3.5), S),
-        Domain(2000, (6.5, 10), T)
+        Domain(2000, (0, 3.5), S),
+        Domain(1000, (6.5, 10), T)
     ]
 
     points = []

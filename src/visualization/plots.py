@@ -34,7 +34,7 @@ def plot_decision_boundary(points: List[Point], model: AbstractModel):
 
     with torch.inference_mode():
         grid_tensor = torch.tensor(grid_points, dtype=torch.float32)
-        predictions = model.predict(grid_tensor)
+        predictions = model.predict_probs(grid_tensor)
         predicted_labels = (predictions[:, 1] > predictions[:, 0]).float().numpy().reshape(xx1.shape)
 
     # decision boundary

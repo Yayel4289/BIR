@@ -28,7 +28,12 @@ def run_baseline(points: List[Point]) -> None:
     train_loader, val_loader = get_train_val_loaders_from_source(points)
 
     baseline = BinaryClassifier()
-    baseline_trainer = BaselineTrainer(baseline, train_loader, val_loader, nn.CrossEntropyLoss())
+    baseline_trainer = BaselineTrainer(
+        baseline, 
+        train_loader, 
+        val_loader, 
+        nn.CrossEntropyLoss()
+    )
     baseline_trainer.train_model()
     plot_model(points, baseline)
 
@@ -36,7 +41,15 @@ def run_dann(points: List[Point]) -> None:
     source_train_loader, source_val_loader, target_train_loader = get_train_val_loaders_from_source_target(points)
 
     dann = DANN(input_dim=2, output_dim=2)
-    dann_trainer = DANN_Trainer(dann, source_train_loader, source_val_loader, target_train_loader, nn.CrossEntropyLoss(), nn.BCEWithLogitsLoss())
+    dann_trainer = DANN_Trainer(
+        dann, 
+        source_train_loader, 
+        source_val_loader, 
+        target_train_loader, 
+        nn.CrossEntropyLoss(), 
+        nn.BCEWithLogitsLoss(),
+        min_epoch_thresh=500
+    )
     dann_trainer.train_model()
     plot_model(points, dann)
 

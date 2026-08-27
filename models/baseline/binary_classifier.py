@@ -14,11 +14,9 @@ class BinaryClassifier(AbstractModel):
             nn.ReLU(),
             nn.Linear(hidden_dim, 2)
         )
-        #self.f1 = nn.Linear(input_dim, hidden_dim)
-        #self.f2 = nn.Linear(hidden_dim, 2)
 
     def forward(self, X: torch.Tensor) -> Tuple[torch.Tensor, torch.NoneType]:
         return self.fc(X), None
 
     def predict(self, X:torch.Tensor) -> torch.Tensor:
-        return torch.softmax(self.fc(X), dim=1)
+        return self.fc(X)
