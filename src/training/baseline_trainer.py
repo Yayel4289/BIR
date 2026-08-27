@@ -4,14 +4,16 @@ from torch import nn
 from torch import optim
 from torch.utils.data import DataLoader
 
+from models.abstract_model import AbstractModel
+
 class BaselineTrainer:
     def __init__(
             self, 
-            model: nn.Module, 
+            model: AbstractModel, 
             source_train_loader: DataLoader,
             source_val_loader: DataLoader,
             label_loss_function: Callable[torch.Tensor, torch.Tensor], 
-            epochs:int=100, 
+            epochs:int=400, 
             lr:float=0.01
             ) -> None:
         self.model = model 
@@ -42,7 +44,7 @@ class BaselineTrainer:
         source_val_loss = 0
         with torch.inference_mode():
             for X_source_val_batch, y_source_val_batch in self.source_val_loader:
-                y_source_pred, _ = self.model(X_source_val_batch)
+                y_source_pred = self.model.predict(X_source_val_batch)
                 y_source_val_batch_labels = y_source_val_batch[:, 0].long()
                 source_label_loss = self.label_loss_function(y_source_pred, y_source_val_batch_labels)
                 source_val_loss += source_label_loss.item()

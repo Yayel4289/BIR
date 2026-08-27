@@ -18,7 +18,6 @@ import numpy as np
 
 from exps.points_classification.data.data_generation import generate_domains, get_train_val_loaders_from_source, get_train_val_loaders_from_source_target
 from exps.points_classification.utils.point import Point
-from src.metrics.losses import DANN_domain_loss, DANN_label_loss
 from models.baseline.binary_classifier import BinaryClassifier
 from models.dann.dann import DANN
 import src.visualization.plots as plots
