@@ -15,8 +15,7 @@ class BaselineTrainer:
             source_val_loader: DataLoader,
             label_loss_function: Callable[torch.Tensor, torch.Tensor], 
             epochs:int=1000, 
-            lr:float=0.01,
-            min_epoch_thresh: int=0
+            lr:float=0.01
             ) -> None:
         self.model = model 
         self.source_train_loader = source_train_loader
@@ -25,7 +24,7 @@ class BaselineTrainer:
         self.epochs = epochs
         self.epoch = 0
         self.optimizer = optim.Adam(params=self.model.parameters(), lr=lr)
-        self.early_stopping = EarlyStopping(min_epoch_thresh=min_epoch_thresh)
+        self.early_stopping = EarlyStopping()
 
     def _train_epoch(self) -> float: 
         self.model.train()

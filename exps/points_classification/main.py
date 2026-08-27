@@ -47,8 +47,7 @@ def run_dann(points: List[Point]) -> None:
         source_val_loader, 
         target_train_loader, 
         nn.CrossEntropyLoss(), 
-        nn.BCEWithLogitsLoss(),
-        min_epoch_thresh=500
+        nn.BCEWithLogitsLoss()
     )
     dann_trainer.train_model()
     plot_model(points, dann)

@@ -17,22 +17,26 @@ class DANN_Trainer(BaselineTrainer):
             domain_loss_function: Callable[torch.Tensor, torch.Tensor],
             epochs: int = 1000, 
             lr: float = 0.01,
-            min_epoch_thresh=0,
-            gamma: float = 10
+            gamma: float = 10,
+            progressive_lambda_epoch_thresh: int = 200
     ) -> None:
         if source_train_loader.batch_size != target_train_loader.batch_size: # Source/Target proportions : 50/50
             raise ValueError(
                 f"Source and Target DataLoaders must have the same batch size ({source_train_loader.batch_size} and {target_train_loader.batch_size}"
             )
-        super().__init__(model, source_train_loader, source_val_loader, label_loss_function, epochs=epochs, lr=lr, min_epoch_thresh=min_epoch_thresh)
+        super().__init__(model, source_train_loader, source_val_loader, label_loss_function, epochs=epochs, lr=lr)
         self.target_train_loader = target_train_loader
         self.domain_loss_function = domain_loss_function
         self.gamma = gamma
+        self.progressive_lambda_epoch_thresh = progressive_lambda_epoch_thresh
 
 
     def compute_grl_lambda(self):
-        p = self.epoch / self.epochs
-        return 2 / (1 + np.exp(-self.gamma * p)) - 1
+        if self.epoch < self.progressive_lambda_epoch_thresh: 
+            return 0
+        p = ((self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh))**3
+        grl_lambda = 2 / (1 + np.exp(-self.gamma * p)) - 1
+        return grl_lambda
 
 
     def _train_epoch(self) -> Tuple[float, float, float, float, float]: 
@@ -90,4 +94,3 @@ class DANN_Trainer(BaselineTrainer):
                 break
 
         self.model.load_state_dict(self.early_stopping.get_best_model_state_dict())
-        print(self.early_stopping.best_loss)
