@@ -54,6 +54,16 @@ def get_X_y_from_domain(points: List[Point], domain: int, shuffle: bool=True) ->
     y_dom_tensor = torch.tensor(y_dom, dtype=torch.float32)
     return X_dom_tensor, y_dom_tensor
 
+def get_X_from_domain(points: List[Point], domain: int) -> torch.Tensor:
+    filtered_pts = list(filter(lambda p: p.domain == domain, points))
+    X_dom = np.asarray([[p.x1, p.x2] for p in filtered_pts])
+    X_dom_tensor = torch.tensor(X_dom, dtype=torch.float32)
+    return X_dom_tensor
+
+def get_X_from_source_target(points: List[Point]) -> Tuple[torch.Tensor]:
+    X_source_tensor = get_X_from_domain(points, S)
+    X_target_tensor = get_X_from_domain(points, T)
+    return X_source_tensor, X_target_tensor
 
 def get_X_y_percent_from_target(points: List[Point], percent=10) -> Tuple[torch.Tensor, torch.Tensor]:
     target_pts = list(filter(lambda p: p.domain == T, points))
@@ -79,3 +89,4 @@ def get_train_val_loaders_from_source_target(points: List[Point]) -> Tuple[DataL
     X_source_tensor, y_source_tensor = get_X_y_from_domain(points, S, shuffle=False)
     X_target_train_tensor, y_target_train_tensor = get_X_y_percent_from_target(points)
     return get_source_target_loaders_from_tensors(X_source_tensor, y_source_tensor, X_target_train_tensor, y_target_train_tensor)
+

@@ -16,8 +16,10 @@ import torch
 from torch import nn
 import numpy as np 
 
-from exps.points_classification.data.data_generation import generate_domains, get_train_val_loaders_from_source, get_train_val_loaders_from_source_target
+from exps.points_classification.data.data_generation import generate_domains, get_X_from_source_target, get_train_val_loaders_from_source, get_train_val_loaders_from_source_target
 from exps.points_classification.utils.point import Point
+from models.abstract_model import AbstractModel
+from src.metrics.h_divergence import compute_empirical_h_divergence
 from models.baseline.binary_classifier import BinaryClassifier
 from models.dann.dann import DANN
 import src.visualization.plots as plots
@@ -50,7 +52,15 @@ def run_dann(points: List[Point]) -> None:
         nn.BCEWithLogitsLoss()
     )
     dann_trainer.train_model()
+    
+    h_divergence = get_model_h_divergence(dann, points)
+    print("H-Divergence:", h_divergence)
+
     plot_model(points, dann)
+
+def get_model_h_divergence(model: AbstractModel, points: List[Point]) -> float:
+    X_source_tensor, X_target_tensor = get_X_from_source_target(points)
+    return compute_empirical_h_divergence(model, X_source_tensor, X_target_tensor)
 
 def plot_model(points: List[Point], model: nn.Module):
     plots.plot_pts(points, show_target_label=True)

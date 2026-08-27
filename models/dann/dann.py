@@ -27,3 +27,8 @@ class DANN(AbstractModel):
     def predict(self, X: torch.Tensor) -> torch.Tensor:
         XF = self.feature_extractor(X)
         return self.label_predictor(XF)
+
+    def predict_domain_prob(self, X: torch.Tensor) -> torch.Tensor:
+        XF = self.feature_extractor(X)
+        domain_prob = torch.sigmoid(self.domain_classifier(XF))
+        return domain_prob
