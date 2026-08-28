@@ -47,7 +47,6 @@ class DANN_Trainer(BaselineTrainer):
         epoch_source_domain_loss = 0
         epoch_target_domain_loss = 0
         epoch_domain_loss = 0
-        epoch_total_loss = 0
         for X_source_train_batch, y_source_train_batch in self.source_train_loader:
             X_target_train_batch, y_target_train_batch = next(iter(self.target_train_loader))
 
@@ -60,7 +59,6 @@ class DANN_Trainer(BaselineTrainer):
             source_domain_loss = self.domain_loss_function(source_domains_pred, source_train_batch_domains)
             target_domain_loss = self.domain_loss_function(target_domains_pred, target_train_batch_domains)
             domain_loss = source_domain_loss + target_domain_loss
-            #total_loss = source_label_loss - self.model.grl_lambda*domain_loss #Is it good ?
             total_loss = source_label_loss + domain_loss
 
             self.optimizer.zero_grad()
@@ -71,23 +69,22 @@ class DANN_Trainer(BaselineTrainer):
             epoch_source_domain_loss += source_domain_loss.item()
             epoch_target_domain_loss += target_domain_loss.item()
             epoch_domain_loss += domain_loss.item()
-            epoch_total_loss += total_loss.item()
 
-        mean_train_loss = epoch_total_loss / len(self.source_train_loader)
         mean_source_label_loss = epoch_source_label_loss / len(self.source_train_loader)
         mean_domain_loss = epoch_domain_loss / len(self.source_train_loader)
         mean_source_domain_loss = epoch_source_domain_loss / len(self.source_train_loader)
         mean_target_domain_loss = epoch_target_domain_loss / len(self.source_train_loader)
-        return mean_train_loss, mean_source_label_loss, mean_domain_loss, mean_source_domain_loss, mean_target_domain_loss    
+        return mean_source_label_loss, mean_domain_loss, mean_source_domain_loss, mean_target_domain_loss    
 
 
     def train_model(self) -> None:
         print(self.model._get_name())
         for self.epoch in range(self.epochs):
-            train_loss, source_label_loss, domain_loss, source_domain_loss, target_domain_loss = self._train_epoch()
+            source_label_loss, domain_loss, source_domain_loss, target_domain_loss = self._train_epoch()
             if self.epoch % 5 == 0:
                 val_loss = self._evaluate_epoch()
-                print(f"Train Loss: {train_loss:.3f}", f"Source Label Loss: {source_label_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", f"Source Domain Loss: {source_domain_loss:.3f}", f"Target Domain Loss: {target_domain_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")
+                #print(f"Source Label Loss: {source_label_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", f"Source Domain Loss: {source_domain_loss:.3f}", f"Target Domain Loss: {target_domain_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")
+                print(f"Source Label Loss: {source_label_loss:.3f}", f"Val Loss: {val_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", sep=" ║ ")
             self.early_stopping.check_early_stop(self.model, val_loss, self.epoch)
             if self.early_stopping.should_stop_training():
                 print(f"Early stopping at epoch {self.epoch}")
