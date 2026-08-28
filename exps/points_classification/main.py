@@ -1,12 +1,14 @@
 """
 Usage:
-    exps.points_classification.main [--model <model_name>]
     exps.points_classification.main -h
+    exps.points_classification.main --plot-only
+    exps.points_classification.main [--model <model_name>]
 
 Options:
     -h                      Show this help
     --model <model_name>    Run <model_name> model. 
                             <model_name> can either be 'baseline' (default) or 'dann'
+    --plot-only             Show only points plot
 """
 
 from docopt import docopt
@@ -16,7 +18,7 @@ import torch
 from torch import nn
 import numpy as np 
 
-from exps.points_classification.data.data_generation import generate_domains, get_X_from_source_target, get_train_val_loaders_from_source, get_train_val_loaders_from_source_target
+from exps.points_classification.data.data_generation import generate_fused_domains, generate_split_domains, get_X_from_source_target, get_train_val_loaders_from_source, get_train_val_loaders_from_source_target
 from exps.points_classification.utils.point import Point
 from models.abstract_model import AbstractModel
 from src.metrics.h_divergence import compute_empirical_h_divergence
@@ -67,6 +69,10 @@ def plot_model(points: List[Point], model: nn.Module):
     plots.plot_decision_boundary(points, model)
     plots.show()
 
+def plot_pts_only(points: List[Point]):
+    plots.plot_pts(points)
+    plots.show()
+
 def print_help_and_exit(optional_msg=""):
     if optional_msg:
         print(optional_msg)
@@ -90,9 +96,10 @@ if __name__ == "__main__":
     np.random.seed(SEED)
     torch.manual_seed(SEED)
 
-    points = generate_domains()
-    if model_name is None:
+    points = generate_fused_domains()
+    if args["--plot-only"]:
+        plot_pts_only(points)
+    elif model_name is None:
         run_baseline(points)
-        sys.exit(0)
-
-    run_func(points)
+    else:
+        run_func(points)
