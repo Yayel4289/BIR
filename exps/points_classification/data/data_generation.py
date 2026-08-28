@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Callable, List, Tuple
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -9,8 +9,16 @@ from exps.points_classification.utils.domain import Domain
 S = 0 # Source
 T = 1 # Target
 
+def high_freq_sin_boundary_cond(p_x1: float, p_x2: float) -> bool:
+    return p_x2 >= 10+np.sin(p_x1*2)
 
-def generate_domains() -> List[Point]:
+def high_ampl_sin_boundary_cond(p_x1: float, p_x2: float) -> bool:
+    return p_x2 >= 10+1*np.sin(p_x1)
+
+def get_point_label(p_x1: float, p_x2: float, condition_func: Callable[float, float] = high_freq_sin_boundary_cond) -> int:
+    return int(condition_func(p_x1, p_x2))
+
+def generate_split_domains() -> List[Point]:
     x1 = np.arange(0, 10, 0.1)
     x2 = np.arange(0, 10, 0.1)
     mu1 = x1
@@ -20,13 +28,59 @@ def generate_domains() -> List[Point]:
     rho = 0.2
 
     domains = [
-        Domain(2000, (0, 3.5), S),
-        Domain(1000, (6.5, 10), T)
+        Domain(S, 2000, (0, 3.5)),
+        Domain(T, 1000, (6.5, 10))
     ]
+    return generate_normal_distr_points(domains, x1, x2, mu1, mu2, sigma1, sigma2, rho)
 
+
+def generate_fused_domains() -> List[Point]:
+    x1 = np.arange(0, 10, 0.1)
+    x2 = np.arange(0, 10, 0.1)
+
+    domains = [
+        Domain(S, 500, (0, 20), (0, 20)),
+        Domain(T, 500, (14, 19), (7, 12))
+    ]
+    return generate_circ_uniform_points(domains, x1, x2)
+
+
+def generate_circ_uniform_points(domains: List[Domain], x1: np.ndarray, x2: np.ndarray):
     points = []
     for domain in domains:
-        a, b = domain.interval
+        x1_min, x1_max = domain.x_interval
+        x2_min, x2_max = domain.y_interval
+
+        # Ellipsis details
+        center_x1 = (x1_min + x1_max) / 2
+        center_x2 = (x2_min + x2_max) / 2
+        horiz_radius = (x1_max - x1_min) / 2
+        vert_radius = (x2_max - x2_min) / 2
+        for _ in range(domain.n):
+            theta = np.random.uniform(0, 2*np.pi)
+            base_radius = np.sqrt(np.random.random())
+            p_x1 = center_x1 + base_radius * horiz_radius * np.cos(theta)
+            p_x2 = center_x2 + base_radius * vert_radius * np.sin(theta)
+            #if 9 <= p_x2 <= 11: 
+            #    p_x2 += np.random.choice((-1, 1)) * (1 + np.random.random())
+            label = get_point_label(p_x1, p_x2, high_ampl_sin_boundary_cond)
+            points.append(Point(p_x1, p_x2, domain.domain_id, label))
+    return points
+        
+
+def generate_normal_distr_points(
+        domains: List[Domain], 
+        x1: np.ndarray, 
+        x2: np.ndarray, 
+        mu1: np.ndarray, 
+        mu2: np.ndarray, 
+        sigma1: np.ndarray, 
+        sigma2: np.ndarray,
+        rho: float
+        ) -> List[Point]:
+    points = []
+    for domain in domains:
+        a, b = domain.x_interval
         indices = np.where((x1 >= a) & (x1 <= b))[0]
         for _ in range(domain.n):
             i = np.random.choice(indices)
@@ -36,9 +90,10 @@ def generate_domains() -> List[Point]:
                 [rho * sigma1[i] * sigma2[i], sigma2[i]**2]
             ]
             p_x1, p_x2 = np.random.multivariate_normal(mean=mean, cov=cov_matrix)
-            label = int(p_x2 >= 10+np.sin(p_x1*2))
+            label = get_point_label(p_x1, p_x2)
             points.append(Point(p_x1, p_x2, domain.domain_id, label))
     return points
+
 
 
 def get_X_y_from_domain(points: List[Point], domain: int, shuffle: bool=True) -> Tuple[torch.Tensor, torch.Tensor]:
