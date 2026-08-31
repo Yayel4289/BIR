@@ -20,7 +20,7 @@ def tensor_train_val_split(
 def get_source_loaders_from_tensors(
         X_source_train_tensor: torch.Tensor, y_source_train_tensor: torch.Tensor,
         X_source_val_tensor: torch.Tensor, y_source_val_tensor: torch.Tensor,
-        batch_size=32
+        batch_size: int=32
         ) -> Tuple[DataLoader, DataLoader]:
     source_train_dataset = TensorDataset(X_source_train_tensor, y_source_train_tensor)
     source_val_dataset = TensorDataset(X_source_val_tensor, y_source_val_tensor)
@@ -38,22 +38,48 @@ def get_source_loaders_from_tensors(
     
     return source_train_loader, source_val_loader
 
+def get_target_loaders_from_tensors(
+        X_target_train_tensor: torch.Tensor, y_target_train_tensor: torch.Tensor,
+        X_target_val_tensor: torch.Tensor, y_target_val_tensor: torch.Tensor,
+        batch_size: int=32
+        ) -> Tuple[DataLoader, DataLoader]:
+    target_train_dataset = TensorDataset(X_target_train_tensor, y_target_train_tensor)
+    target_val_dataset = TensorDataset(X_target_val_tensor, y_target_val_tensor)
+    target_train_sampler = CyclingSampler(target_train_dataset, batch_size=batch_size)
+    target_val_sampler = CyclingSampler(target_val_dataset, batch_size=batch_size)
+    target_train_loader = DataLoader(
+        target_train_dataset,
+        batch_size=batch_size,
+        sampler=target_train_sampler
+    )
+
+    target_val_loader = DataLoader(
+        target_val_dataset,
+        batch_size=batch_size,
+        sampler=target_val_sampler
+    )
+
+    return target_train_loader, target_val_loader
+
+
 def get_source_target_loaders_from_tensors(
         X_source_tensor: torch.Tensor, y_source_tensor: torch.Tensor,
-        X_target_train_tensor: torch.Tensor, y_target_train_tensor: torch.Tensor,
+        X_target_tensor: torch.Tensor, y_target_tensor: torch.Tensor,
         batch_size=32
         ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     X_source_train_tensor, y_source_train_tensor, X_source_val_tensor, y_source_val_tensor = tensor_train_val_split(X_source_tensor, y_source_tensor)
     source_train_loader, source_val_loader = get_source_loaders_from_tensors(
         X_source_train_tensor, y_source_train_tensor, 
-        X_source_val_tensor, y_source_val_tensor
+        X_source_val_tensor, y_source_val_tensor,
+        batch_size=batch_size
     )
-    target_train_dataset = TensorDataset(X_target_train_tensor, y_target_train_tensor)
-    target_sampler = CyclingSampler(target_train_dataset, batch_size=batch_size)
-    target_train_loader = DataLoader(
-        target_train_dataset,
-        batch_size=batch_size,
-        sampler=target_sampler
+
+    X_target_train_tensor, y_target_train_tensor, X_target_val_tensor, y_target_val_tensor = tensor_train_val_split(X_target_tensor, y_target_tensor)
+    target_train_loader, target_val_loader = get_target_loaders_from_tensors(
+        X_target_train_tensor, y_target_train_tensor,
+        X_target_val_tensor, y_target_val_tensor,
+        batch_size=batch_size
     )
-    return source_train_loader, source_val_loader, target_train_loader
+
+    return source_train_loader, source_val_loader, target_train_loader, target_val_loader
 

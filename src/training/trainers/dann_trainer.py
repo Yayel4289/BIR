@@ -13,12 +13,13 @@ class DANN_Trainer(BaselineTrainer):
             source_train_loader: DataLoader, 
             source_val_loader: DataLoader, 
             target_train_loader: DataLoader,
+            target_val_loader: DataLoader,
             label_loss_function: Callable[torch.Tensor, torch.Tensor], 
             domain_loss_function: Callable[torch.Tensor, torch.Tensor],
             epochs: int = 1000, 
             lr: float = 0.01,
             gamma: float = 10,
-            progressive_lambda_epoch_thresh: int = 200
+            progressive_lambda_epoch_thresh: int = 0
     ) -> None:
         if source_train_loader.batch_size != target_train_loader.batch_size: # Source/Target proportions : 50/50
             raise ValueError(
@@ -34,7 +35,7 @@ class DANN_Trainer(BaselineTrainer):
     def compute_grl_lambda(self):
         if self.epoch < self.progressive_lambda_epoch_thresh: 
             return 0
-        p = ((self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh)) ** 3
+        p = ((self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh)) 
         grl_lambda = 2 / (1 + np.exp(-self.gamma * p)) - 1
         return grl_lambda
 
@@ -47,8 +48,8 @@ class DANN_Trainer(BaselineTrainer):
         epoch_source_domain_loss = 0
         epoch_target_domain_loss = 0
         epoch_domain_loss = 0
-        for X_source_train_batch, y_source_train_batch in self.source_train_loader:
-            X_target_train_batch, y_target_train_batch = next(iter(self.target_train_loader))
+        for (X_source_train_batch, y_source_train_batch), (X_target_train_batch, y_target_train_batch) \
+        in  zip(self.source_train_loader, self.target_train_loader):
 
             source_labels_pred, source_domains_pred = self.model(X_source_train_batch, grl_lambda)
             _, target_domains_pred = self.model(X_target_train_batch, grl_lambda, only_domain=True)
