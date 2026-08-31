@@ -32,7 +32,7 @@ class DANN_Trainer(BaselineTrainer):
     def compute_grl_lambda(self):
         if self.epoch < self.progressive_lambda_epoch_thresh: 
             return 0
-        p = ((self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh)) ** 1
+        p = (self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh)
         grl_lambda = 2 / (1 + np.exp(-self.gamma * p)) - 1
         return grl_lambda
 
@@ -92,7 +92,7 @@ class DANN_Trainer(BaselineTrainer):
                 source_domain_loss = self.domain_loss_function(source_domains_pred, source_val_batch_domains)
                 target_domain_loss = self.domain_loss_function(target_domains_pred, target_val_batch_domains)
                 domain_loss = source_domain_loss + target_domain_loss
-                val_loss += source_domain_loss.item() - domain_loss.item()
+                val_loss += source_label_loss.item() - domain_loss.item()
                 
         mean_val_loss = val_loss / len(self.source_val_loader)
         return mean_val_loss

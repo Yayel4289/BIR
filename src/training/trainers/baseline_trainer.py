@@ -26,6 +26,9 @@ class BaselineTrainer:
         self.optimizer = optim.Adam(params=self.model.parameters(), lr=lr)
         self.early_stopping = EarlyStopping()
 
+    def get_best_val_loss(self) -> float:
+        return self.early_stopping.best_loss
+
     def _train_epoch(self) -> float: 
         self.model.train()
         train_loss = 0
