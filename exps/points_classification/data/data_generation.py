@@ -2,9 +2,11 @@ from typing import Callable, List, Tuple
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+from exps.points_classification.utils.moon_domain import MoonDomain
 from exps.points_classification.utils.point import Point
 from src.data.data_loader import get_source_loaders_from_tensors, get_source_target_loaders_from_tensors, tensor_train_val_split
 from exps.points_classification.utils.domain import Domain
+from sklearn.datasets import make_moons
 
 S = 0 # Source
 T = 1 # Target
@@ -43,6 +45,29 @@ def generate_fused_domains() -> List[Point]:
         Domain(T, 500, (14, 19), (7, 12))
     ]
     return generate_circ_uniform_points(domains, x1, x2)
+
+def generate_intertwinning_moons(noise: float = 0.075) -> List[Point]:
+    domains = [
+        MoonDomain(S, 320, 0),
+        MoonDomain(T, 320, np.pi / 5)
+    ]
+
+    pts = []
+    for domain in domains:
+        X_dom, y_dom = make_moons(domain.n, noise=noise)
+        X_dom = rotate((0.5, 0.25), X_dom, domain.tilt_rad)
+        domain_pts = [Point(X_dom[i, 0], X_dom[i, 1], domain.domain_id, y_dom[i]) for i in range(domain.n)]
+        pts.extend(domain_pts)
+    return pts
+        
+
+def rotate(origin: Tuple[float, float], pts:np.ndarray, angle: float):
+    R = np.array([
+        [np.cos(angle), -np.sin(angle)],
+        [np.sin(angle),  np.cos(angle)]]
+    )
+    o = np.atleast_2d(origin)
+    return np.squeeze((R @ (pts.T - o.T) + o.T).T)
 
 
 def generate_circ_uniform_points(domains: List[Domain], x1: np.ndarray, x2: np.ndarray):

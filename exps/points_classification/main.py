@@ -18,7 +18,7 @@ import torch
 from torch import nn
 import numpy as np 
 
-from exps.points_classification.data.data_generation import generate_fused_domains, generate_split_domains, get_X_from_source_target, get_train_val_loaders_from_source, get_train_val_loaders_from_source_target
+from exps.points_classification.data.data_generation import generate_fused_domains, generate_intertwinning_moons, generate_split_domains, get_X_from_source_target, get_train_val_loaders_from_source, get_train_val_loaders_from_source_target
 from exps.points_classification.utils.point import Point
 from models.abstract_model import AbstractModel
 from src.metrics.h_divergence import compute_empirical_h_divergence
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     np.random.seed(SEED)
     torch.manual_seed(SEED)
 
-    points = generate_fused_domains()
+    points = generate_intertwinning_moons()
     if args["--plot-only"]:
         plot_pts_only(points)
     elif model_name is None:
