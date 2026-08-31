@@ -21,12 +21,9 @@ class DANN_Trainer(BaselineTrainer):
             gamma: float = 10,
             progressive_lambda_epoch_thresh: int = 0
     ) -> None:
-        if source_train_loader.batch_size != target_train_loader.batch_size: # Source/Target proportions : 50/50
-            raise ValueError(
-                f"Source and Target DataLoaders must have the same batch size ({source_train_loader.batch_size} and {target_train_loader.batch_size}"
-            )
         super().__init__(model, source_train_loader, source_val_loader, label_loss_function, epochs=epochs, lr=lr)
         self.target_train_loader = target_train_loader
+        self.target_val_loader = target_val_loader
         self.domain_loss_function = domain_loss_function
         self.gamma = gamma
         self.progressive_lambda_epoch_thresh = progressive_lambda_epoch_thresh
@@ -35,7 +32,7 @@ class DANN_Trainer(BaselineTrainer):
     def compute_grl_lambda(self):
         if self.epoch < self.progressive_lambda_epoch_thresh: 
             return 0
-        p = ((self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh)) 
+        p = ((self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh)) ** 1
         grl_lambda = 2 / (1 + np.exp(-self.gamma * p)) - 1
         return grl_lambda
 
@@ -76,6 +73,29 @@ class DANN_Trainer(BaselineTrainer):
         mean_source_domain_loss = epoch_source_domain_loss / len(self.source_train_loader)
         mean_target_domain_loss = epoch_target_domain_loss / len(self.source_train_loader)
         return mean_source_label_loss, mean_domain_loss, mean_source_domain_loss, mean_target_domain_loss    
+
+    
+    def _evaluate_epoch(self) -> float:
+        self.model.eval()
+        val_loss = 0
+        grl_lambda = self.compute_grl_lambda()
+        with torch.inference_mode():
+            for (X_source_val_batch, y_source_val_batch), (X_target_val_batch, y_target_val_batch) \
+            in  zip(self.source_val_loader, self.target_val_loader):
+
+                source_labels_pred, source_domains_pred = self.model(X_source_val_batch, grl_lambda)
+                _, target_domains_pred = self.model(X_target_val_batch, grl_lambda, only_domain=True)
+                source_val_batch_labels, source_val_batch_domains = y_source_val_batch[:, 0].long(), y_source_val_batch[:, 1].view(-1, 1)
+                target_val_batch_domains = y_target_val_batch[:, 1].view(-1, 1)
+                
+                source_label_loss = self.label_loss_function(source_labels_pred, source_val_batch_labels)
+                source_domain_loss = self.domain_loss_function(source_domains_pred, source_val_batch_domains)
+                target_domain_loss = self.domain_loss_function(target_domains_pred, target_val_batch_domains)
+                domain_loss = source_domain_loss + target_domain_loss
+                val_loss += source_domain_loss.item() - domain_loss.item()
+                
+        mean_val_loss = val_loss / len(self.source_val_loader)
+        return mean_val_loss
 
 
     def train_model(self) -> None:
