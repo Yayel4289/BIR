@@ -18,7 +18,8 @@ class DANN_Trainer(BaselineTrainer):
             domain_loss_function: Callable[torch.Tensor, torch.Tensor],
             epochs: int = 1000, 
             lr: float = 0.01,
-            gamma: float = 10,
+            gamma: int = 10,
+            max_lambda: int = 1,
             progressive_lambda_epoch_thresh: int = 0
     ) -> None:
         super().__init__(model, source_train_loader, source_val_loader, label_loss_function, epochs=epochs, lr=lr)
@@ -26,14 +27,15 @@ class DANN_Trainer(BaselineTrainer):
         self.target_val_loader = target_val_loader
         self.domain_loss_function = domain_loss_function
         self.gamma = gamma
+        self.max_lambda = max_lambda
         self.progressive_lambda_epoch_thresh = progressive_lambda_epoch_thresh
 
 
     def compute_grl_lambda(self):
         if self.epoch < self.progressive_lambda_epoch_thresh: 
             return 0
-        p = (self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh)
-        grl_lambda = 2 / (1 + np.exp(-self.gamma * p)) - 1
+        p = ((self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh))**2
+        grl_lambda = self.max_lambda * (2 / (1 + np.exp(-self.gamma * p)) - 1)
         return grl_lambda
 
 
