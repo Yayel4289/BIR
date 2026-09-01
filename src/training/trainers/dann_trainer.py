@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 from models.dann.dann import DANN
 from src.training.trainers.baseline_trainer import BaselineTrainer
+from src.training.early_stopping import EarlyStopping
 
 class DANN_Trainer(BaselineTrainer):
     def __init__(
@@ -29,6 +30,7 @@ class DANN_Trainer(BaselineTrainer):
         self.gamma = gamma
         self.max_lambda = max_lambda
         self.progressive_lambda_epoch_thresh = progressive_lambda_epoch_thresh
+        self.early_stopping = EarlyStopping(loss_size=2)
 
 
     def compute_grl_lambda(self) -> float:
@@ -79,7 +81,9 @@ class DANN_Trainer(BaselineTrainer):
     
     def _evaluate_epoch(self) -> float:
         self.model.eval()
-        val_loss = 0
+        total_val_loss = 0
+        total_source_label_loss = 0
+        total_domain_loss = 0
         grl_lambda = self.compute_grl_lambda()
         with torch.inference_mode():
             for (X_source_val_batch, y_source_val_batch), (X_target_val_batch, y_target_val_batch) \
@@ -94,10 +98,14 @@ class DANN_Trainer(BaselineTrainer):
                 source_domain_loss = self.domain_loss_function(source_domains_pred, source_val_batch_domains)
                 target_domain_loss = self.domain_loss_function(target_domains_pred, target_val_batch_domains)
                 domain_loss = source_domain_loss + target_domain_loss
-                val_loss += source_label_loss.item() - domain_loss.item()
+                total_val_loss += source_label_loss.item() - domain_loss.item()
+                total_source_label_loss += source_label_loss.item()
+                total_domain_loss -= domain_loss.item()
                 
-        mean_val_loss = val_loss / len(self.source_val_loader)
-        return mean_val_loss
+        mean_val_loss = total_val_loss / len(self.source_val_loader)
+        mean_source_label_loss = total_source_label_loss / len(self.source_val_loader)
+        mean_domain_loss = total_domain_loss / len(self.source_val_loader)
+        return mean_val_loss, mean_source_label_loss, mean_domain_loss
 
 
     def train_model(self) -> None:
@@ -105,10 +113,11 @@ class DANN_Trainer(BaselineTrainer):
         for self.epoch in range(self.epochs):
             source_label_loss, domain_loss, source_domain_loss, target_domain_loss = self._train_epoch()
             if self.epoch % 5 == 0:
-                val_loss = self._evaluate_epoch()
+                val_loss, val_source_label_loss, val_domain_loss = self._evaluate_epoch()
                 #print(f"Source Label Loss: {source_label_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", f"Source Domain Loss: {source_domain_loss:.3f}", f"Target Domain Loss: {target_domain_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")
-                print(f"Source Label Loss: {source_label_loss:.3f}", f"Val Loss: {val_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", sep=" ║ ")
-            self.early_stopping.check_early_stop(self.model, val_loss, self.epoch)
+                #print(f"Source Label Loss: {source_label_loss:.3f}", f"Val Loss: {val_loss:.3f}", f"Domain Loss: {domain_loss:.3f}", sep=" ║ ")
+                print(f"Val Loss: {val_loss:.3f}", f"Val Label Loss: {val_source_label_loss:.3f}", f"Domain Loss: {val_domain_loss:.3f}", sep=" ║ ")
+            self.early_stopping.check_early_stop(self.model, [val_source_label_loss, val_domain_loss], self.epoch)
             if self.early_stopping.should_stop_training():
                 print(f"Early stopping at epoch {self.epoch}")
                 break

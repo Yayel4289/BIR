@@ -27,7 +27,7 @@ class BaselineTrainer:
         self.early_stopping = EarlyStopping()
 
     def get_best_val_loss(self) -> float:
-        return self.early_stopping.best_loss
+        return sum(self.early_stopping.best_losses)
 
     def _train_epoch(self) -> float: 
         self.model.train()
@@ -64,7 +64,7 @@ class BaselineTrainer:
             val_loss = self._evaluate_epoch()
             if self.epoch % 5 == 0:
                 print(f"Train Loss: {train_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")
-            self.early_stopping.check_early_stop(self.model, val_loss, self.epoch)
+            self.early_stopping.check_early_stop(self.model, [val_loss], self.epoch)
             if self.early_stopping.should_stop_training():
                 print(f"Early stopping at epoch {self.epoch}")
                 break
