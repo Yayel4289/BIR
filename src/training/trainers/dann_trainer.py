@@ -31,10 +31,10 @@ class DANN_Trainer(BaselineTrainer):
         self.progressive_lambda_epoch_thresh = progressive_lambda_epoch_thresh
 
 
-    def compute_grl_lambda(self):
+    def compute_grl_lambda(self) -> float:
         if self.epoch < self.progressive_lambda_epoch_thresh: 
             return 0
-        p = ((self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh))**2
+        p = ((self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh))
         grl_lambda = self.max_lambda * (2 / (1 + np.exp(-self.gamma * p)) - 1)
         return grl_lambda
 

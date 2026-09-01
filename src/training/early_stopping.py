@@ -4,7 +4,7 @@ from copy import deepcopy
 from models.abstract_model import AbstractModel
 
 class EarlyStopping:
-    def __init__(self, patience: int=200, delta: float=1e-4):
+    def __init__(self, patience: int=100, delta: float=1e-4):
         self.patience = patience
         self.delta = delta
         self.best_loss = torch.inf

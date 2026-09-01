@@ -14,12 +14,12 @@ def select_DANN_hyperparams(
         min_gamma: int=1, 
         max_gamma: int=100, 
         min_max_lambda: int=1,
-        max_max_lambda: int=30,
+        max_max_lambda: int=15,
         verbose: bool=True
         ) -> float:
     def objective(trial: optuna.Trial) -> float:
         gamma = trial.suggest_int("gamma", min_gamma, max_gamma)
-        max_lambda = trial.suggest_int("max_lambda", min_max_lambda, max_max_lambda, log=True)
+        max_lambda = trial.suggest_int("max_lambda", min_max_lambda, max_max_lambda)
 
         dann = DANN(input_dim=2, output_dim=2)
         trainer = DANN_Trainer(
@@ -37,7 +37,6 @@ def select_DANN_hyperparams(
 
         val_loss = trainer.get_best_val_loss()
 
-        trial.set_user_attr("model_state", dann.state_dict())
         return val_loss
 
     study = optuna.create_study(direction="minimize")
