@@ -10,7 +10,7 @@ class CyclingSampler(Sampler):
         indices = []
         for _ in range(self.batch_size):
             indices.append(self.current_idx)
-            self.current_idx = (self.current_idx + 1) % self.batch_size
+            self.current_idx = (self.current_idx + 1) % len(self.data_source)
         return iter(indices)
     
     def __len__(self):

@@ -48,8 +48,8 @@ def generate_fused_domains() -> List[Point]:
 
 def generate_intertwinning_moons(noise: float = 0.075) -> List[Point]:
     domains = [
-        MoonDomain(S, 320, 0),
-        MoonDomain(T, 320, np.pi / 5)
+        MoonDomain(S, 300, 0),
+        MoonDomain(T, 300, np.pi / 5)
     ]
 
     pts = []
@@ -164,8 +164,8 @@ def get_train_val_loaders_from_source(points: List[Point]) -> Tuple[DataLoader, 
     X_source_train_tensor, y_source_train_tensor, X_source_val_tensor, y_source_val_tensor = tensor_train_val_split(X_source_tensor, y_source_tensor)
     return get_source_loaders_from_tensors(X_source_train_tensor, y_source_train_tensor, X_source_val_tensor, y_source_val_tensor)
 
-def get_train_val_loaders_from_source_target(points: List[Point]) -> Tuple[DataLoader, DataLoader, DataLoader]:
+def get_train_val_loaders_from_source_target(points: List[Point]) -> Tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
     X_source_tensor, y_source_tensor = get_X_y_from_domain(points, S, shuffle=False)
-    X_target_train_tensor, y_target_train_tensor = get_X_y_percent_from_target(points)
-    return get_source_target_loaders_from_tensors(X_source_tensor, y_source_tensor, X_target_train_tensor, y_target_train_tensor)
+    X_target_tensor, y_target_tensor = get_X_y_percent_from_target(points)
+    return get_source_target_loaders_from_tensors(X_source_tensor, y_source_tensor, X_target_tensor, y_target_tensor)
 
