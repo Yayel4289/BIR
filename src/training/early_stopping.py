@@ -20,7 +20,7 @@ class EarlyStopping:
         else:
             self.no_improvement_count += 1
             if self.no_improvement_count >= self.patience:
-                self.stop_training = True
+                self.stop_training = False
 
     def should_stop_training(self):
         return self.stop_training

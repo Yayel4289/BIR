@@ -32,7 +32,8 @@ def select_DANN_hyperparams(
             nn.CrossEntropyLoss(),
             nn.BCEWithLogitsLoss(),
             gamma=gamma,
-            max_lambda=max_lambda
+            max_lambda=max_lambda,
+            verbose=False
         )
         trainer.train_model()
 

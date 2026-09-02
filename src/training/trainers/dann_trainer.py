@@ -20,7 +20,7 @@ class DANN_Trainer(BaselineTrainer):
             lr: float = 0.01,
             gamma: int = 10,
             max_lambda: int = 1,
-            progressive_lambda_epoch_thresh: int = 0
+            verbose: bool = True
     ) -> None:
         super().__init__(model, source_train_loader, source_val_loader, label_loss_function, epochs=epochs, lr=lr)
         self.target_train_loader = target_train_loader
@@ -28,20 +28,25 @@ class DANN_Trainer(BaselineTrainer):
         self.domain_loss_function = domain_loss_function
         self.gamma = gamma
         self.max_lambda = max_lambda
-        self.progressive_lambda_epoch_thresh = progressive_lambda_epoch_thresh
+        self.grl_lambda = 0
+        self.verbose = verbose
 
+
+    def log(self, *values: object, sep: str = " ") -> None:
+        if self.verbose:
+            print(*values, sep=sep)
 
     def compute_grl_lambda(self) -> float:
-        if self.epoch < self.progressive_lambda_epoch_thresh: 
-            return 0
-        p = ((self.epoch - self.progressive_lambda_epoch_thresh) / (self.epochs - self.progressive_lambda_epoch_thresh))
+        p = self.epoch / self.epochs
         grl_lambda = self.max_lambda * (2 / (1 + np.exp(-self.gamma * p)) - 1)
         return grl_lambda
+
+    def update_grl_lambda(self) -> None:
+        self.grl_lambda = self.compute_grl_lambda()
 
 
     def _train_epoch(self) -> Tuple[float, float, float, float, float]: 
         self.model.train()
-        grl_lambda = self.compute_grl_lambda()
         train_loss = 0
         epoch_source_label_loss = 0
         epoch_source_domain_loss = 0
@@ -50,8 +55,8 @@ class DANN_Trainer(BaselineTrainer):
         for (X_source_train_batch, y_source_train_batch), (X_target_train_batch, y_target_train_batch) \
         in  zip(self.source_train_loader, self.target_train_loader):
 
-            source_labels_pred, source_domains_pred = self.model(X_source_train_batch, grl_lambda)
-            _, target_domains_pred = self.model(X_target_train_batch, grl_lambda, only_domain=True)
+            source_labels_pred, source_domains_pred = self.model(X_source_train_batch, self.grl_lambda)
+            _, target_domains_pred = self.model(X_target_train_batch, self.grl_lambda, only_domain=True)
             source_train_batch_labels, source_train_batch_domains = y_source_train_batch[:, 0].long(), y_source_train_batch[:, 1].view(-1, 1)
             target_train_batch_domains = y_target_train_batch[:, 1].view(-1, 1)
 
@@ -82,13 +87,12 @@ class DANN_Trainer(BaselineTrainer):
         val_loss = 0
         val_source_label_loss = 0
         val_domain_loss = 0
-        grl_lambda = self.compute_grl_lambda()
         with torch.inference_mode():
             for (X_source_val_batch, y_source_val_batch), (X_target_val_batch, y_target_val_batch) \
             in  zip(self.source_val_loader, self.target_val_loader):
 
-                source_labels_pred, source_domains_pred = self.model(X_source_val_batch, grl_lambda)
-                _, target_domains_pred = self.model(X_target_val_batch, grl_lambda, only_domain=True)
+                source_labels_pred, source_domains_pred = self.model(X_source_val_batch, self.grl_lambda)
+                _, target_domains_pred = self.model(X_target_val_batch, self.grl_lambda, only_domain=True)
                 source_val_batch_labels, source_val_batch_domains = y_source_val_batch[:, 0].long(), y_source_val_batch[:, 1].view(-1, 1)
                 target_val_batch_domains = y_target_val_batch[:, 1].view(-1, 1)
                 
@@ -107,15 +111,16 @@ class DANN_Trainer(BaselineTrainer):
 
 
     def train_model(self) -> None:
-        print(self.model._get_name())
+        self.log(self.model._get_name())
         for self.epoch in range(self.epochs):
+            self.update_grl_lambda()
             source_label_loss, domain_loss, source_domain_loss, target_domain_loss = self._train_epoch()
             if self.epoch % 5 == 0:
                 val_loss, val_source_label_loss, val_domain_loss = self._evaluate_epoch()
-                print(f"Val Loss: {val_loss:.3f}", f"Val Label Loss: {val_source_label_loss:.3f}", f"Val Domain Loss: {val_domain_loss:.3f}", sep=" ║ ")
+                self.log(f"Val Loss: {val_loss:.3f}", f"Val Label Loss: {val_source_label_loss:.3f}", f"Val Domain Loss: {val_domain_loss:.3f}", sep=" ║ ")
             self.early_stopping.check_early_stop(self.model, val_loss, self.epoch)
             if self.early_stopping.should_stop_training():
-                print(f"Early stopping at epoch {self.epoch}")
+                self.log(f"Early stopping at epoch {self.epoch}")
                 break
 
         self.model.load_state_dict(self.early_stopping.get_best_model_state_dict())
