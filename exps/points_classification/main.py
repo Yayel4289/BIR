@@ -31,6 +31,8 @@ from src.training.trainers.baseline_trainer import BaselineTrainer
 from src.training.trainers.dann_trainer import DANN_Trainer
 from src.training.hyperparameter_selection import select_DANN_hyperparams
 
+SEED = 42
+
 def run_baseline(points: List[Point]) -> None:
     train_loader, val_loader = get_train_val_loaders_from_source(points)
 
@@ -50,7 +52,7 @@ def run_dann(points: List[Point], hyperparam_selection: bool) -> None:
 
     kwargs = {}
     if hyperparam_selection:
-        gamma, max_lambda = select_DANN_hyperparams(source_train_loader, source_val_loader, target_train_loader, target_val_loader)
+        gamma, max_lambda = select_DANN_hyperparams(SEED, source_train_loader, source_val_loader, target_train_loader, target_val_loader)
         kwargs = {"gamma": gamma, "max_lambda": max_lambda}
 
     dann = DANN(input_dim=2, output_dim=2)
@@ -106,7 +108,6 @@ if __name__ == "__main__":
         elif run_func != run_dann and hyperparam_selection:
             print_help_and_exit(Fore.RED + f"Lambda selection is only available for DANN" + Style.RESET_ALL)
 
-    SEED = 42
     np.random.seed(SEED)
     torch.manual_seed(SEED)
 

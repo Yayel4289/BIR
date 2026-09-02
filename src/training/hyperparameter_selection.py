@@ -6,6 +6,7 @@ import optuna
 from src.training.trainers.dann_trainer import DANN_Trainer
 
 def select_DANN_hyperparams(
+        seed: int,
         source_train_loader: DataLoader,
         source_val_loader: DataLoader,
         target_train_loader: DataLoader,
@@ -39,7 +40,8 @@ def select_DANN_hyperparams(
 
         return val_loss
 
-    study = optuna.create_study(direction="minimize")
+    sampler = optuna.samplers.TPESampler(seed=seed)
+    study = optuna.create_study(direction="minimize", sampler=sampler)
     study.optimize(objective, n_trials=n_trials)
 
     best_gamma = study.best_params["gamma"]
