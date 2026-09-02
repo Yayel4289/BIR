@@ -13,7 +13,7 @@ def select_DANN_hyperparams(
         target_val_loader: DataLoader,
         n_trials: int=30, 
         min_gamma: int=1, 
-        max_gamma: int=100, 
+        max_gamma: int=50, 
         min_max_lambda: int=1,
         max_max_lambda: int=15,
         verbose: bool=True
