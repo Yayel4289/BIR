@@ -133,6 +133,21 @@ def get_X_y_from_domain(points: List[Point], domain: int, shuffle: bool=True) ->
     y_dom_tensor = torch.tensor(y_dom, dtype=torch.float32)
     return X_dom_tensor, y_dom_tensor
 
+def get_X_y_labels_from_source_target(points: List[Point]) -> Tuple[torch.Tensor]:
+    X_source_tensor, y_source_tensor = get_X_y_from_domain(points, S, shuffle=False)
+    X_target_tensor, y_target_tensor = get_X_y_from_domain(points, T, shuffle=False)
+    X_tensor = torch.cat((X_source_tensor, X_target_tensor))
+    y_tensor = torch.cat((y_source_tensor, y_target_tensor))
+    return X_tensor, y_tensor[:, 0]
+
+def get_X_y_labels_from_target(points: List[Point]) -> Tuple[torch.Tensor]:
+    X_target_tensor, y_target_tensor = get_X_y_from_domain(points, T, shuffle=False)
+    return X_target_tensor, y_target_tensor[:, 0]
+
+def get_X_y_labels_from_source(points: List[Point]) -> Tuple[torch.Tensor]:
+    X_source_tensor, y_source_tensor = get_X_y_from_domain(points, S, shuffle=False)
+    return X_source_tensor, y_source_tensor[:, 0]
+
 def get_X_from_domain(points: List[Point], domain: int) -> torch.Tensor:
     filtered_pts = list(filter(lambda p: p.domain == domain, points))
     X_dom = np.asarray([[p.x1, p.x2] for p in filtered_pts])
