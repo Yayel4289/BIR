@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 from models.dann.dann import DANN
 import optuna
 from src.training.trainers.dann_trainer import DANN_Trainer
+from src.visualization.logger import Logger
 
 def select_DANN_hyperparams(
         seed: int,
@@ -41,12 +42,13 @@ def select_DANN_hyperparams(
 
         return val_loss
 
+    if not verbose:
+        optuna.logging.set_verbosity(optuna.logging.FATAL)
     sampler = optuna.samplers.TPESampler(seed=seed)
     study = optuna.create_study(direction="minimize", sampler=sampler)
     study.optimize(objective, n_trials=n_trials)
 
     best_gamma = study.best_params["gamma"]
     best_max_lambda = study.best_params["max_lambda"]
-    if verbose:
-        print(f"Best gamma : {best_gamma}, best max_lambda : {best_max_lambda} (val loss={study.best_value:.3f})")
+    Logger.static_log(verbose, f"Best gamma : {best_gamma}, best max_lambda : {best_max_lambda} (val loss={study.best_value:.3f})")
     return best_gamma, best_max_lambda

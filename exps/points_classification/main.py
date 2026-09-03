@@ -26,7 +26,7 @@ import numpy as np
 from exps.points_classification.data.data_generation import generate_fused_domains, generate_intertwinning_moons, generate_split_domains, get_X_from_source_target, get_train_val_loaders_from_source, get_train_val_loaders_from_source_target
 from exps.points_classification.utils.point import Point
 from models.abstract_model import AbstractModel
-from src.metrics.metrics import get_model_h_divergence, get_model_f1_score
+from src.metrics.metrics import compute_model_h_divergence, compute_model_source_f1_score, compute_model_target_f1_score, get_table_string, has_model_h_divergence, make_metrics_dict, udpate_model_metrics_mean_std, update_model_metrics_lists
 from models.baseline.binary_classifier import BinaryClassifier
 from models.dann.dann import DANN
 import src.visualization.plots as plots
@@ -37,7 +37,7 @@ from src.training.hyperparameter_selection import select_DANN_hyperparams
 DEFAULT_SEED = 42
 COMPARISON_SEEDS = [DEFAULT_SEED, 89, 0]
 
-def run_baseline(points: List[Point], plot: bool = True) -> BinaryClassifier:
+def run_baseline(points: List[Point], plot: bool = True, verbose: bool = True) -> BinaryClassifier:
     train_loader, val_loader = get_train_val_loaders_from_source(points)
 
     baseline = BinaryClassifier()
@@ -45,12 +45,14 @@ def run_baseline(points: List[Point], plot: bool = True) -> BinaryClassifier:
         baseline, 
         train_loader, 
         val_loader, 
-        nn.CrossEntropyLoss()
+        nn.CrossEntropyLoss(),
+        verbose=verbose
     )
     baseline_trainer.train_model()
-    source_f1_score, target_f1_score = get_model_f1_score(baseline, points)
-    print("Source F1 Score:", source_f1_score)
-    print("Target F1 Score:", target_f1_score)
+    if verbose:
+        source_f1_score, target_f1_score = compute_model_source_f1_score(baseline, points), compute_model_target_f1_score(baseline, points)
+        print("Source F1 Score:", source_f1_score)
+        print("Target F1 Score:", target_f1_score)
     if plot:
         plot_model(points, baseline)
     return baseline
@@ -60,7 +62,14 @@ def run_dann(points: List[Point], hyperparam_selection: bool = False, plot: bool
 
     kwargs = {}
     if hyperparam_selection:
-        gamma, max_lambda = select_DANN_hyperparams(DEFAULT_SEED, source_train_loader, source_val_loader, target_train_loader, target_val_loader)
+        gamma, max_lambda = select_DANN_hyperparams(
+            DEFAULT_SEED, 
+            source_train_loader, 
+            source_val_loader, 
+            target_train_loader, 
+            target_val_loader, 
+            verbose=verbose
+        )
         kwargs = {"gamma": gamma, "max_lambda": max_lambda}
 
     dann = DANN(input_dim=2, output_dim=2)
@@ -72,13 +81,14 @@ def run_dann(points: List[Point], hyperparam_selection: bool = False, plot: bool
         target_val_loader,
         nn.CrossEntropyLoss(), 
         nn.BCEWithLogitsLoss(),
+        verbose=verbose,
         **kwargs
     )
     dann_trainer.train_model()
     
     if verbose:
-        source_f1_score, target_f1_score = get_model_f1_score(dann, points)
-        h_divergence = get_model_h_divergence(dann, points)
+        source_f1_score, target_f1_score = compute_model_source_f1_score(dann, points), compute_model_target_f1_score(dann, points)
+        h_divergence = compute_model_h_divergence(dann, points)
         print("Source F1 Score:", source_f1_score)
         print("Target F1 Score:", target_f1_score)
         print("H-Divergence:", h_divergence)
@@ -87,53 +97,41 @@ def run_dann(points: List[Point], hyperparam_selection: bool = False, plot: bool
     return dann
 
 def make_table_comparison() -> None:
-    h_divergences = []
-    source_f1_scores_baseline = []
-    target_f1_scores_baseline = []
-    source_f1_scores_dann = []
-    target_f1_scores_dann = []
-    for seed in COMPARISON_SEEDS:
+    models_config =  {
+        "Baseline": {
+            "run_func": run_baseline,
+            "metrics": make_metrics_dict(h_divergence=False),
+            "kwargs": {
+                "verbose": False,
+                "plot": False
+            }
+        },
+        "DANN": {
+            "run_func": run_dann,
+            "metrics": make_metrics_dict(),
+            "kwargs": {
+                "hyperparam_selection": True,
+                "verbose": False,
+                "plot": False
+            }
+        }
+    }
+    for i, seed in enumerate(COMPARISON_SEEDS):
         setup_seed(seed)
         train_val_pts = generate_intertwinning_moons()
         test_pts = generate_intertwinning_moons()
+        for model_name in models_config:
+            run_func = models_config[model_name]["run_func"]
+            kwargs = models_config[model_name]["kwargs"]
+            model = run_func(train_val_pts, **kwargs)
 
-        baseline = run_baseline(train_val_pts, plot=False)
-        dann = run_dann(train_val_pts, hyperparam_selection=True, plot=False, verbose=False)
+            model_metrics = models_config[model_name]["metrics"]
+            update_model_metrics_lists(model_metrics, model, train_val_pts)
+            if i == len(COMPARISON_SEEDS) - 1: # last pass
+                udpate_model_metrics_mean_std(model_metrics)
 
-        sourcef1_score_baseline = get_model_f1_score(baseline, test_pts)
-        source_f1_scores_baseline.append(sourcef1_score_baseline)
-        target_f1_score_baseline = get_model_f1_score(baseline, test_pts)
-        target_f1_scores_baseline.append(target_f1_score_baseline)
-        source_f1_score_dann = get_model_f1_score(dann, test_pts)
-        source_f1_scores_dann.append(source_f1_score_dann)
-        target_f1_score_dann = get_model_f1_score(dann, test_pts)
-        target_f1_scores_dann.append(target_f1_score_dann)
+    print(get_table_string(models_config))
 
-        h_divergence = get_model_h_divergence(dann, test_pts)
-        h_divergences.append(h_divergence)
-    
-    mean_source_f1_score_baseline = np.mean(source_f1_scores_baseline)
-    std_source_f1_score_baseline = np.std(source_f1_scores_baseline)
-    mean_target_f1_score_baseline = np.mean(target_f1_scores_baseline)
-    std_target_f1_score_baseline = np.std(target_f1_scores_baseline)
-    mean_source_f1_score_dann = np.mean(source_f1_scores_dann)
-    std_source_f1_score_dann = np.std(source_f1_scores_dann)
-    mean_target_f1_score_dann = np.mean(target_f1_scores_dann)
-    std_target_f1_score_dann = np.std(f1_target_scores_dann)
-    mean_h_divergence = np.mean(h_divergences)
-    std_h_divergence = np.std(h_divergences)
-    
-    print(
-f"""
-┌──────────┬─────────────────┬─────────────────┬─────────────────┐
-│    -     │ Source F1 Score │ Target F1 Score │ H-Divergence    │
-├──────────┼─────────────────┼─────────────────┼─────────────────┤
-│ Baseline │ {mean_source_f1_score_baseline:.3f} ± {std_source_f1_score_baseline:.3f}   │ {mean_target_f1_score_baseline:.3f} ± {std_target_f1_score_baseline:.3f}   │        /        │
-├──────────┼─────────────────┼─────────────────┼─────────────────┤
-│ DANN     │ {mean_source_f1_score_dann:.3f} ± {std_source_f1_score_dann:.3f}   │ {mean_target_f1_score_dann:.3f} ± {std_target_f1_score_dann:.3f}   │ {mean_h_divergence:.3f} ± {std_h_divergence:.3f}   │                 
-└──────────┴─────────────────┴─────────────────┴─────────────────┘
-"""
-    )
  
 def plot_model(points: List[Point], model: nn.Module):
     plots.plot_pts(points, show_target_label=True)
@@ -169,6 +167,7 @@ def main() -> None:
         print_help_and_exit()
     if args["--comparison"]:
         make_table_comparison()
+        sys.exit(0)
 
     formatted_model_name = args["--model"].lower() if args["--model"] is not None else None
     hyperparam_selection = args["--hyperparam-selection"]
