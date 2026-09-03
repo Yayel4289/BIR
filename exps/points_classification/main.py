@@ -1,19 +1,31 @@
 """
 Usage:
-    exps.points_classification.main [-h]
+    exps.points_classification.main -h
     exps.points_classification.main --plot-only
-    exps.points_classification.main --model <model_name> [--hyperparam-selection]
+    exps.points_classification.main --model <model_name> [--mode <mode_name> [--hyperparam-selection]]
     exps.points_classification.main --comparison
 
 Options:
-    -h                      Show this help. Default behavior is no parameter is passed
-    --model <model_name>    Run <model_name> model. 
-                            <model_name> can either be 'baseline' or 'dann'
-    --plot-only             Show only points plot
-    --hyperparam-selection  Perform an hyperparameter selection for gamma and max_lambda.
-                            Only available for DANN
-    --comparison            Compare models based on H-Divergence and F1 Score.
-                            (Hyperparameter selection for DANN)
+    -h                                          Show this help.
+
+    --plot-only                                 Show only points plot.
+
+    --model <model_name>                        Run <model_name> model (see --mode for models modes) 
+                                                <model_name> can either be 'baseline' or 'dann'.
+
+    --mode <mode_name>                          Specify the mode of the model
+                                                <mode_name> can either be 'fixed' or 'progressive'. 
+                                                This refers to the evolution of grl_lambda through the training of DANN.
+                                                Only available for DANN.
+
+    --hyperparam-selection                      Perform an hyperparameter selection depending on the <mode>.
+                                                If <mode_name> is 'fixed', the hyperparameter will be grl_lambda.
+                                                If <mode_name> is 'progressive', the hyperparameters will be max_grl_lambda and gamma, 
+                                                deciding the evolution curve of grl_lambda.
+                                                Only available for DANN.
+
+    --comparison                                Compare models based on H-Divergence and F1 Score
+                                                (Both hyperparameter selections for DANN)
 """
 
 from docopt import docopt
@@ -32,8 +44,9 @@ from models.dann.dann import DANN
 import src.visualization.plots as plots
 from src.training.trainers.baseline_trainer import BaselineTrainer
 from src.training.trainers.dann_trainer import DANN_Trainer
-from src.training.hyperparameter_selection import select_DANN_hyperparams
+from src.training.hyperparameter_selection import select_DANN_progressive_hyperparams, select_DANN_fixed_grl_lambda
 from src.training.lambda_config.progressive_lambda_config import ProgressiveLambdaConfig
+from src.training.lambda_config.fixed_lambda_config import FixedLambdaConfig
 
 DEFAULT_SEED = 42
 COMPARISON_SEEDS = [DEFAULT_SEED, 89, 0]
@@ -58,20 +71,33 @@ def run_baseline(points: List[Point], plot: bool = True, verbose: bool = True) -
         plot_model(points, baseline)
     return baseline
 
-def run_dann(points: List[Point], hyperparam_selection: bool = False, plot: bool = True, verbose: bool = True) -> DANN:
+def run_dann(points: List[Point], mode: str, hyperparam_selection: bool, plot: bool = True, verbose: bool = True) -> DANN:
     source_train_loader, source_val_loader, target_train_loader, target_val_loader = get_train_val_loaders_from_source_target(points)
 
     kwargs = {}
     if hyperparam_selection:
-        max_grl_lambda, gamma = select_DANN_hyperparams(
-            DEFAULT_SEED, 
-            source_train_loader, 
-            source_val_loader, 
-            target_train_loader, 
-            target_val_loader, 
-            verbose=verbose
-        )
-        kwargs = {"lambda_config": ProgressiveLambdaConfig(max_grl_lambda, gamma)}
+        if mode == "fixed":
+            grl_lambda = select_DANN_fixed_grl_lambda(
+                DEFAULT_SEED,
+                source_train_loader, 
+                source_val_loader,
+                target_train_loader,
+                target_val_loader,
+                verbose=verbose
+            )
+            kwargs = {"lambda_config": FixedLambdaConfig(grl_lambda)}
+        elif mode == "progressive":
+            max_grl_lambda, gamma = select_DANN_progressive_hyperparams(
+                DEFAULT_SEED, 
+                source_train_loader, 
+                source_val_loader, 
+                target_train_loader, 
+                target_val_loader, 
+                verbose=verbose
+            )
+            kwargs = {"lambda_config": ProgressiveLambdaConfig(max_grl_lambda, gamma)}
+    else:
+        kwargs = {"lambda_config": ProgressiveLambdaConfig(1, 10) if mode == "progressive" else FixedLambdaConfig(5)}
 
     dann = DANN(input_dim=2, output_dim=2)
     dann_trainer = DANN_Trainer(
@@ -107,11 +133,20 @@ def make_table_comparison() -> None:
                 "plot": False
             }
         },
-        "DANN": {
+        "DANN Fixed λ": {
             "run_func": run_dann,
             "metrics": make_metrics_dict(),
+            "args": ["fixed", True], # mode, hyperparam_selection
             "kwargs": {
-                "hyperparam_selection": True,
+                "verbose": False,
+                "plot": False
+            }
+        },
+        "DANN Progressive λ": {
+            "run_func": run_dann,
+            "metrics": make_metrics_dict(),
+            "args": ["progressive", True], # mode, hyperparam_selection
+            "kwargs": {
                 "verbose": False,
                 "plot": False
             }
@@ -123,8 +158,9 @@ def make_table_comparison() -> None:
         test_pts = generate_intertwinning_moons()
         for model_name in models_config:
             run_func = models_config[model_name]["run_func"]
+            args = models_config[model_name].get("args")
             kwargs = models_config[model_name]["kwargs"]
-            model = run_func(train_val_pts, **kwargs)
+            model = run_func(train_val_pts, **kwargs) if args is None else run_func(train_val_pts, *args, **kwargs)
 
             model_metrics = models_config[model_name]["metrics"]
             update_model_metrics_lists(model_metrics, model, train_val_pts)
@@ -153,17 +189,19 @@ def setup_seed(seed: int = DEFAULT_SEED) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-def validate_model_params(formatted_model_name: str, hyperparam_selection: bool) -> bool: # True if model mode, else False
+def validate_model_params(formatted_model_name: str, mode_name: str, hyperparam_selection: bool) -> bool: # True if model mode, else False
     if formatted_model_name is None:
         return False
     if formatted_model_name not in ["baseline", "dann"]: 
         print_help_and_exit(Fore.RED + f"Wrong model name: '{formatted_model_name}'" + Style.RESET_ALL)
-    elif formatted_model_name != "dann" and hyperparam_selection:
-        print_help_and_exit(Fore.RED + f"Hyperparameter selection is only available for DANN" + Style.RESET_ALL)
+    elif mode_name is not None and mode_name not in ["fixed", "progressive"]:
+        print_help_and_exit(Fore.RED + f"Wrong mode: '{mode_name}'" + Style.RESET_ALL)
+    elif formatted_model_name == "baseline" and (hyperparam_selection or mode_name is not None):
+        print_help_and_exit(Fore.RED + f"Hyperparameter selection or mode is not available for baseline" + Style.RESET_ALL)
     return True
 
 
-def main() -> None:
+def main(args) -> None:
     if args["-h"]: 
         print_help_and_exit()
     if args["--comparison"]:
@@ -171,8 +209,9 @@ def main() -> None:
         sys.exit(0)
 
     formatted_model_name = args["--model"].lower() if args["--model"] is not None else None
+    mode_name = args["--mode"].lower() if args["--mode"] is not None else None
     hyperparam_selection = args["--hyperparam-selection"]
-    model_mode = validate_model_params(formatted_model_name, hyperparam_selection)
+    model_mode = validate_model_params(formatted_model_name, mode_name, hyperparam_selection)
 
     setup_seed()
     points = generate_intertwinning_moons()
@@ -180,12 +219,12 @@ def main() -> None:
     if args["--plot-only"]:
         plot_pts_only(points)
     elif model_mode:
-        kwargs = {"hyperparam_selection": hyperparam_selection} if hyperparam_selection else {}
+        args = [mode_name, hyperparam_selection]
         run_func = globals().get("run_" + formatted_model_name)
-        run_func(points, **kwargs)
+        run_func(points, *args)
     else:
         print_help_and_exit()
 
 if __name__ == "__main__":
     args = docopt(__doc__) 
-    main()
+    main(args)

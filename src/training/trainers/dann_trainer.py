@@ -7,6 +7,7 @@ from models.dann.dann import DANN
 from src.training.trainers.baseline_trainer import BaselineTrainer
 from src.training.lambda_config.abstract_lambda_config import AbstractLambdaConfig
 from src.training.lambda_config.progressive_lambda_config import ProgressiveLambdaConfig
+from src.training.model_saver import ModelSaver
 
 class DANN_Trainer(BaselineTrainer):
     def __init__(
@@ -28,6 +29,7 @@ class DANN_Trainer(BaselineTrainer):
         self.target_val_loader = target_val_loader
         self.domain_loss_function = domain_loss_function
         self.lambda_config = lambda_config
+        self.model_saver = ModelSaver(not self.lambda_config.is_progressive())
 
     def _train_epoch(self) -> Tuple[float, float, float, float, float]: 
         self.model.train()
@@ -99,9 +101,9 @@ class DANN_Trainer(BaselineTrainer):
             if self.epoch % 5 == 0:
                 val_source_label_loss, val_domain_loss = self._evaluate_epoch()
                 self.logger(f"Val Label Loss: {val_source_label_loss:.3f}", f"Val Domain Loss: {val_domain_loss:.3f}", sep=" ║ ")
-            self.early_stopping.check_early_stop(self.model, val_source_label_loss, self.epoch)
-            if self.early_stopping.should_stop_training():
+            self.model_saver.update(self.model, val_source_label_loss, self.epoch)
+            if self.model_saver.should_stop_training():
                 self.logger(f"Early stopping at epoch {self.epoch}")
                 break
 
-        self.model.load_state_dict(self.early_stopping.get_best_model_state_dict())
+        self.model.load_state_dict(self.model_saver.get_best_model_state_dict())

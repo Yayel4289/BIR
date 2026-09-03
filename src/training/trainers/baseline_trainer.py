@@ -5,7 +5,7 @@ from torch import optim
 from torch.utils.data import DataLoader
 
 from models.abstract_model import AbstractModel
-from src.training.early_stopping import EarlyStopping
+from src.training.model_saver import ModelSaver
 from src.visualization.logger import Logger
 
 class BaselineTrainer:
@@ -27,10 +27,10 @@ class BaselineTrainer:
         self.logger = Logger(verbose)
         self.epoch = 0
         self.optimizer = optim.Adam(params=self.model.parameters(), lr=lr)
-        self.early_stopping = EarlyStopping()
+        self.model_saver = ModelSaver(True)
 
     def get_best_val_loss(self) -> float:
-        return self.early_stopping.best_loss
+        return self.model_saver.best_loss
 
     def _train_epoch(self) -> float: 
         self.model.train()
@@ -67,9 +67,9 @@ class BaselineTrainer:
             val_loss = self._evaluate_epoch()
             if self.epoch % 5 == 0:
                 self.logger(f"Train Loss: {train_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")
-            self.early_stopping.check_early_stop(self.model, val_loss, self.epoch)
-            if self.early_stopping.should_stop_training():
+            self.model_saver.update(self.model, val_loss, self.epoch)
+            if self.model_saver.should_stop_training():
                 self.logger(f"Early stopping at epoch {self.epoch}")
                 break
 
-        self.model.load_state_dict(self.early_stopping.get_best_model_state_dict())
+        self.model.load_state_dict(self.model_saver.get_best_model_state_dict())
