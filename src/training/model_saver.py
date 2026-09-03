@@ -3,8 +3,9 @@ import torch
 from copy import deepcopy
 from models.abstract_model import AbstractModel
 
-class EarlyStopping:
-    def __init__(self, patience: int=100, delta: float=1e-4):
+class ModelSaver:
+    def __init__(self, early_stopping_enabled: bool, patience: int=200, delta: float=1e-4):
+        self.early_stopping_enabled = early_stopping_enabled
         self.patience = patience
         self.delta = delta
         self.best_loss = torch.inf
@@ -12,15 +13,15 @@ class EarlyStopping:
         self.no_improvement_count = 0
         self.stop_training = False
     
-    def check_early_stop(self, model: AbstractModel, val_loss: float, epoch: int):
+    def update(self, model: AbstractModel, val_loss: float, epoch: int):
         if val_loss < self.best_loss - self.delta:
             self.best_loss = val_loss
             self.best_model_state_dict = deepcopy(model.state_dict())
             self.no_improvement_count = 0
-        else:
+        elif self.early_stopping_enabled:
             self.no_improvement_count += 1
             if self.no_improvement_count >= self.patience:
-                self.stop_training = False
+                self.stop_training = True
 
     def should_stop_training(self):
         return self.stop_training
