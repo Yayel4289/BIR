@@ -5,6 +5,8 @@ from torch.utils.data import DataLoader
 import numpy as np
 from models.dann.dann import DANN
 from src.training.trainers.baseline_trainer import BaselineTrainer
+from src.training.lambda_config.abstract_lambda_config import AbstractLambdaConfig
+from src.training.lambda_config.progressive_lambda_config import ProgressiveLambdaConfig
 
 class DANN_Trainer(BaselineTrainer):
     def __init__(
@@ -16,29 +18,16 @@ class DANN_Trainer(BaselineTrainer):
             target_val_loader: DataLoader,
             label_loss_function: Callable[torch.Tensor, torch.Tensor], 
             domain_loss_function: Callable[torch.Tensor, torch.Tensor],
+            lambda_config: AbstractLambdaConfig = ProgressiveLambdaConfig(1, 10),
             epochs: int = 1000, 
             lr: float = 0.01,
-            gamma: int = 10,
-            max_lambda: int = 1,
             verbose: bool = True
     ) -> None:
         super().__init__(model, source_train_loader, source_val_loader, label_loss_function, epochs=epochs, lr=lr, verbose=verbose)
         self.target_train_loader = target_train_loader
         self.target_val_loader = target_val_loader
         self.domain_loss_function = domain_loss_function
-        self.gamma = gamma
-        self.max_lambda = max_lambda
-        self.grl_lambda = 0
-
-
-    def compute_grl_lambda(self) -> float:
-        p = self.epoch / self.epochs
-        grl_lambda = self.max_lambda * (2 / (1 + np.exp(-self.gamma * p)) - 1)
-        return grl_lambda
-
-    def update_grl_lambda(self) -> None:
-        self.grl_lambda = self.compute_grl_lambda()
-
+        self.lambda_config = lambda_config
 
     def _train_epoch(self) -> Tuple[float, float, float, float, float]: 
         self.model.train()
@@ -50,8 +39,8 @@ class DANN_Trainer(BaselineTrainer):
         for (X_source_train_batch, y_source_train_batch), (X_target_train_batch, y_target_train_batch) \
         in  zip(self.source_train_loader, self.target_train_loader):
 
-            source_labels_pred, source_domains_pred = self.model(X_source_train_batch, self.grl_lambda)
-            _, target_domains_pred = self.model(X_target_train_batch, self.grl_lambda, only_domain=True)
+            source_labels_pred, source_domains_pred = self.model(X_source_train_batch, self.lambda_config.get_grl_lambda())
+            _, target_domains_pred = self.model(X_target_train_batch, self.lambda_config.get_grl_lambda(), only_domain=True)
             source_train_batch_labels, source_train_batch_domains = y_source_train_batch[:, 0].long(), y_source_train_batch[:, 1].view(-1, 1)
             target_train_batch_domains = y_target_train_batch[:, 1].view(-1, 1)
 
@@ -85,8 +74,8 @@ class DANN_Trainer(BaselineTrainer):
             for (X_source_val_batch, y_source_val_batch), (X_target_val_batch, y_target_val_batch) \
             in  zip(self.source_val_loader, self.target_val_loader):
 
-                source_labels_pred, source_domains_pred = self.model(X_source_val_batch, self.grl_lambda)
-                _, target_domains_pred = self.model(X_target_val_batch, self.grl_lambda, only_domain=True)
+                source_labels_pred, source_domains_pred = self.model(X_source_val_batch, self.lambda_config.get_grl_lambda())
+                _, target_domains_pred = self.model(X_target_val_batch, self.lambda_config.get_grl_lambda(), only_domain=True)
                 source_val_batch_labels, source_val_batch_domains = y_source_val_batch[:, 0].long(), y_source_val_batch[:, 1].view(-1, 1)
                 target_val_batch_domains = y_target_val_batch[:, 1].view(-1, 1)
                 
@@ -105,7 +94,7 @@ class DANN_Trainer(BaselineTrainer):
     def train_model(self) -> None:
         self.logger(self.model._get_name())
         for self.epoch in range(self.epochs):
-            self.update_grl_lambda()
+            self.lambda_config.update_grl_lambda(epoch=self.epoch, epochs=self.epochs)
             source_label_loss, domain_loss, source_domain_loss, target_domain_loss = self._train_epoch()
             if self.epoch % 5 == 0:
                 val_source_label_loss, val_domain_loss = self._evaluate_epoch()

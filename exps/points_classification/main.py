@@ -33,6 +33,7 @@ import src.visualization.plots as plots
 from src.training.trainers.baseline_trainer import BaselineTrainer
 from src.training.trainers.dann_trainer import DANN_Trainer
 from src.training.hyperparameter_selection import select_DANN_hyperparams
+from src.training.lambda_config.progressive_lambda_config import ProgressiveLambdaConfig
 
 DEFAULT_SEED = 42
 COMPARISON_SEEDS = [DEFAULT_SEED, 89, 0]
@@ -62,7 +63,7 @@ def run_dann(points: List[Point], hyperparam_selection: bool = False, plot: bool
 
     kwargs = {}
     if hyperparam_selection:
-        gamma, max_lambda = select_DANN_hyperparams(
+        max_grl_lambda, gamma = select_DANN_hyperparams(
             DEFAULT_SEED, 
             source_train_loader, 
             source_val_loader, 
@@ -70,7 +71,7 @@ def run_dann(points: List[Point], hyperparam_selection: bool = False, plot: bool
             target_val_loader, 
             verbose=verbose
         )
-        kwargs = {"gamma": gamma, "max_lambda": max_lambda}
+        kwargs = {"lambda_config": ProgressiveLambdaConfig(max_grl_lambda, gamma)}
 
     dann = DANN(input_dim=2, output_dim=2)
     dann_trainer = DANN_Trainer(
