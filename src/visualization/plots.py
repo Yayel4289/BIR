@@ -4,21 +4,24 @@ import matplotlib
 from models.abstract_model import AbstractModel
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
 import torch
 import numpy as np
 
 from exps.points_classification.utils.point import Point
 
-def plot_pts(points: List[Point], show_target_label=True):
+def plot_pts(points: List[Point], continuous: bool = False, show_target_label=True):
     plt.figure(figsize=(12, 8))
+    source_colors = ["red", "blue"]
     target_colors = ["orange", "cyan"] if show_target_label else ["black"] * 2
-    color_map = [
-        ["red", "blue"], # source
-        target_colors # target
-    ]
+    colors_label0 = plt.cm.colors.LinearSegmentedColormap.from_list("source_cmap", [source_colors[0], target_colors[0]])
+    colors_label1 = plt.cm.colors.LinearSegmentedColormap.from_list("target_cmap", [source_colors[1], target_colors[1]])
+    color_map = [colors_label0, colors_label1]
+    norm = Normalize(0, 1)
 
     for p in points:
-        plt.scatter(p.x1, p.x2, alpha=0.5, color=color_map[p.domain][p.label])
+        plt.scatter(p.x1, p.x2, alpha=0.5, color=color_map[p.label](norm(p.domain)))
+
     plt.xlabel("X1")
     plt.ylabel("X2")
     plt.grid(True)

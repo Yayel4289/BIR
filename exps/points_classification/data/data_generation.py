@@ -46,10 +46,16 @@ def generate_fused_domains() -> List[Point]:
     ]
     return generate_circ_uniform_points(domains, x1, x2)
 
-def generate_intertwinning_moons(noise: float = 0.075) -> List[Point]:
+def generate_intertwinning_moons(continuous: bool = False, noise: float = 0.075, tilt: float = np.pi / 5, n_by_dom: int = 300) -> List[Point]:
+    if not continuous:
+        return _generate_intertwinning_moons_discrete(noise, tilt, n_by_dom)
+    else:
+        return _generate_intertwinning_moons_continuous(noise, tilt, n_by_dom*2)
+
+def _generate_intertwinning_moons_discrete(noise: float, tilt: float, n_by_dom: int) -> List[Point]:
     domains = [
-        MoonDomain(S, 300, 0),
-        MoonDomain(T, 300, np.pi / 5)
+        MoonDomain(S, n_by_dom, 0),
+        MoonDomain(T, n_by_dom, tilt)
     ]
 
     pts = []
@@ -59,15 +65,22 @@ def generate_intertwinning_moons(noise: float = 0.075) -> List[Point]:
         domain_pts = [Point(X_dom[i, 0], X_dom[i, 1], domain.domain_id, y_dom[i]) for i in range(domain.n)]
         pts.extend(domain_pts)
     return pts
-        
 
-def rotate(origin: Tuple[float, float], pts:np.ndarray, angle: float):
-    R = np.array([
-        [np.cos(angle), -np.sin(angle)],
-        [np.sin(angle),  np.cos(angle)]]
-    )
+def _generate_intertwinning_moons_continuous(noise: float, tilt_max: float, n_total: int, tilt_mult: float = 1.5) -> List[Point]:
+    X, y = make_moons(n_total, noise=noise)
+    t = np.random.uniform(S, T, size=n_total)
+    angles = t * tilt_max * tilt_mult # solves double noises diff
+    X_rot = rotate((0.5, 0.25), X, angles)
+    return [Point(X_rot[i, 0], X_rot[i, 1], t[i], y[i]) for i in range(n_total)]        
+
+def rotate(origin: Tuple[float, float], pts:np.ndarray, angle: [float | np.ndarray]):
     o = np.atleast_2d(origin)
-    return np.squeeze((R @ (pts.T - o.T) + o.T).T)
+    d = pts - o
+    cos = np.cos(angle)
+    sin = np.sin(angle)
+    x_rot = d[:, 0] * cos - d[:, 1] * sin
+    y_rot = d[:, 0] * sin + d[:, 1] * cos
+    return np.stack([x_rot, y_rot], axis=1) + o
 
 
 def generate_circ_uniform_points(domains: List[Domain], x1: np.ndarray, x2: np.ndarray):

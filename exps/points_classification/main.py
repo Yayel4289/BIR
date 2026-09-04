@@ -1,16 +1,18 @@
 """
 Usage:
     exps.points_classification.main -h
-    exps.points_classification.main --plot-only
+    exps.points_classification.main --plot-only [--continuous]
     exps.points_classification.main --model <model_name> [--mode <mode_name> [--hyperparam-selection]]
     exps.points_classification.main --comparison
 
 Options:
     -h                                          Show this help.
 
-    --plot-only                                 Show only points plot.
+    --plot-only                                 Show only points plot (continuous domains or not, see --continuous).
 
-    --model <model_name>                        Run <model_name> model (see --mode for models modes) 
+    --continuous                                Decides if the domains are continuous or not.
+
+    --model <model_name>                        Run <model_name> model (see --mode for models modes).
                                                 <model_name> can either be 'baseline' or 'dann'.
 
     --mode <mode_name>                          Specify the mode of the model
@@ -214,11 +216,12 @@ def main(args) -> None:
     model_mode = validate_model_params(formatted_model_name, mode_name, hyperparam_selection)
 
     setup_seed()
-    points = generate_intertwinning_moons()
 
     if args["--plot-only"]:
+        points = generate_intertwinning_moons(continuous=args["--continuous"])
         plot_pts_only(points)
     elif model_mode:
+        points = generate_intertwinning_moons()
         args = [mode_name, hyperparam_selection]
         run_func = globals().get("run_" + formatted_model_name)
         run_func(points, *args)
