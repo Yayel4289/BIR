@@ -13,7 +13,7 @@ Options:
     --continuous                                Decides if the domains are continuous or not.
 
     --model <model_name>                        Run <model_name> model (see --mode for models modes).
-                                                <model_name> can either be 'baseline' or 'dann'.
+                                                <model_name> can either be 'baseline', 'dann' or 'cida'.
 
     --mode <mode_name>                          Specify the mode of the model
                                                 <mode_name> can either be 'fixed' or 'progressive'. 
@@ -40,18 +40,24 @@ import numpy as np
 from exps.points_classification.data.data_generation import generate_fused_domains, generate_intertwinning_moons, generate_split_domains, get_X_from_source_target, get_train_val_loaders_from_source, get_train_val_loaders_from_source_target
 from exps.points_classification.utils.point import Point
 from models.abstract_model import AbstractModel
+from models.cida.cida import CIDA
 from src.metrics.metrics import compute_model_h_divergence, compute_model_source_f1_score, compute_model_target_f1_score, get_table_string, has_model_h_divergence, make_metrics_dict, udpate_model_metrics_mean_std, update_model_metrics_lists
 from models.baseline.binary_classifier import BinaryClassifier
 from models.dann.dann import DANN
 import src.visualization.plots as plots
 from src.training.trainers.baseline_trainer import BaselineTrainer
 from src.training.trainers.dann_trainer import DANN_Trainer
-from src.training.hyperparameter_selection import select_DANN_progressive_hyperparams, select_DANN_fixed_grl_lambda
+from src.training.hyperparameter_selection import select_model_progressive_hyperparams, select_model_fixed_grl_lambda
 from src.training.lambda_config.progressive_lambda_config import ProgressiveLambdaConfig
 from src.training.lambda_config.fixed_lambda_config import FixedLambdaConfig
+from src.training.trainers.cida_trainer import CIDA_Trainer
 
 DEFAULT_SEED = 42
-COMPARISON_SEEDS = [DEFAULT_SEED, 89, 0]
+COMPARISON_SEEDS = [DEFAULT_SEED, 89, 0, 4289, 8942]
+
+def get_trainer_model_from_model_name(formatted_model_name: str) -> Tuple[Type[DANN], Type[DANN_Trainer]]:
+    acronym = formatted_model_name.upper()
+    return globals().get(acronym), globals().get(acronym + "_Trainer")
 
 def run_baseline(points: List[Point], plot: bool = True, verbose: bool = True) -> BinaryClassifier:
     train_loader, val_loader = get_train_val_loaders_from_source(points)
@@ -73,57 +79,50 @@ def run_baseline(points: List[Point], plot: bool = True, verbose: bool = True) -
         plot_model(points, baseline)
     return baseline
 
-def run_dann(points: List[Point], mode: str, hyperparam_selection: bool, plot: bool = True, verbose: bool = True) -> DANN:
+def run_adversarial_model(points: List[Point], formatted_model_name: str, mode: str, hyperparam_selection: bool, plot: bool = True, verbose: bool = True) -> DANN:
     source_train_loader, source_val_loader, target_train_loader, target_val_loader = get_train_val_loaders_from_source_target(points)
-
+    ModelCass, TrainerClass = get_trainer_model_from_model_name(formatted_model_name)
+    
     kwargs = {}
     if hyperparam_selection:
         if mode == "fixed":
-            grl_lambda = select_DANN_fixed_grl_lambda(
+            grl_lambda = select_model_fixed_grl_lambda(
                 DEFAULT_SEED,
-                source_train_loader, 
-                source_val_loader,
-                target_train_loader,
-                target_val_loader,
-                verbose=verbose
+                ModelCass, TrainerClass,
+                source_train_loader, source_val_loader, target_train_loader, target_val_loader,
+                verbose=verbose,
             )
             kwargs = {"lambda_config": FixedLambdaConfig(grl_lambda)}
         elif mode == "progressive":
-            max_grl_lambda, gamma = select_DANN_progressive_hyperparams(
+            max_grl_lambda, gamma = select_model_progressive_hyperparams(
                 DEFAULT_SEED, 
-                source_train_loader, 
-                source_val_loader, 
-                target_train_loader, 
-                target_val_loader, 
-                verbose=verbose
+                ModelCass, TrainerClass,
+                source_train_loader, source_val_loader, target_train_loader, target_val_loader, 
+                verbose=verbose,
             )
             kwargs = {"lambda_config": ProgressiveLambdaConfig(max_grl_lambda, gamma)}
     else:
         kwargs = {"lambda_config": ProgressiveLambdaConfig(1, 10) if mode == "progressive" else FixedLambdaConfig(5)}
 
-    dann = DANN(input_dim=2, output_dim=2)
-    dann_trainer = DANN_Trainer(
-        dann, 
-        source_train_loader, 
-        source_val_loader, 
-        target_train_loader, 
-        target_val_loader,
-        nn.CrossEntropyLoss(), 
-        nn.BCEWithLogitsLoss(),
+    model = ModelCass(input_dim=2, output_dim=2)
+    trainer = TrainerClass(
+        model, 
+        source_train_loader, source_val_loader, target_train_loader, target_val_loader,
         verbose=verbose,
         **kwargs
     )
-    dann_trainer.train_model()
+    trainer.train_model()
     
     if verbose:
-        source_f1_score, target_f1_score = compute_model_source_f1_score(dann, points), compute_model_target_f1_score(dann, points)
-        h_divergence = compute_model_h_divergence(dann, points)
+        source_f1_score, target_f1_score = compute_model_source_f1_score(model, points), compute_model_target_f1_score(model, points)
+        h_divergence = compute_model_h_divergence(model, points)
         print("Source F1 Score:", source_f1_score)
         print("Target F1 Score:", target_f1_score)
         print("H-Divergence:", h_divergence)
     if plot:
-        plot_model(points, dann)
-    return dann
+        plot_model(points, model)
+    return model
+
 
 def make_table_comparison() -> None:
     models_config =  {
@@ -136,18 +135,36 @@ def make_table_comparison() -> None:
             }
         },
         "DANN Fixed λ": {
-            "run_func": run_dann,
+            "run_func": run_adversarial_model,
             "metrics": make_metrics_dict(),
-            "args": ["fixed", True], # mode, hyperparam_selection
+            "args": ["dann", "fixed", True],
             "kwargs": {
                 "verbose": False,
                 "plot": False
             }
         },
         "DANN Progressive λ": {
-            "run_func": run_dann,
+            "run_func": run_adversarial_model,
             "metrics": make_metrics_dict(),
-            "args": ["progressive", True], # mode, hyperparam_selection
+            "args": ["dann", "progressive", True],
+            "kwargs": {
+                "verbose": False,
+                "plot": False
+            }
+        },
+        "CIDA Fixed λ": {
+            "run_func": run_adversarial_model,
+            "metrics": make_metrics_dict(),
+            "args": ["cida", "fixed", True],
+            "kwargs": {
+                "verbose": False,
+                "plot": False
+            }
+        },
+        "CIDA Progressive λ": {
+            "run_func": run_adversarial_model,
+            "metrics": make_metrics_dict(),
+            "args": ["cida", "progressive", True],
             "kwargs": {
                 "verbose": False,
                 "plot": False
@@ -194,7 +211,7 @@ def setup_seed(seed: int = DEFAULT_SEED) -> None:
 def validate_model_params(formatted_model_name: str, mode_name: str, hyperparam_selection: bool) -> bool: # True if model mode, else False
     if formatted_model_name is None:
         return False
-    if formatted_model_name not in ["baseline", "dann"]: 
+    if formatted_model_name not in ["baseline", "dann", "cida"]: 
         print_help_and_exit(Fore.RED + f"Wrong model name: '{formatted_model_name}'" + Style.RESET_ALL)
     elif mode_name is not None and mode_name not in ["fixed", "progressive"]:
         print_help_and_exit(Fore.RED + f"Wrong mode: '{mode_name}'" + Style.RESET_ALL)
@@ -221,10 +238,9 @@ def main(args) -> None:
         points = generate_intertwinning_moons(continuous=args["--continuous"])
         plot_pts_only(points)
     elif model_mode:
-        points = generate_intertwinning_moons()
-        args = [mode_name, hyperparam_selection]
-        run_func = globals().get("run_" + formatted_model_name)
-        run_func(points, *args)
+        continuous = formatted_model_name != "dann"
+        points = generate_intertwinning_moons(continuous=continuous)
+        run_adversarial_model(points, formatted_model_name, mode_name, hyperparam_selection)
     else:
         print_help_and_exit()
 
