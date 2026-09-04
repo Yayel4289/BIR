@@ -11,6 +11,8 @@ from sklearn.datasets import make_moons
 S = 0 # Source
 T = 1 # Target
 
+CID_BOUND = 0.5
+
 def high_freq_sin_boundary_cond(p_x1: float, p_x2: float) -> bool:
     return p_x2 >= 10+np.sin(p_x1*2)
 
@@ -133,9 +135,12 @@ def generate_normal_distr_points(
     return points
 
 
+def get_pts_from_domain(pts: List[Point], domain: int) -> List[Point]:
+    return list(filter(lambda p: np.abs(domain - p.domain) < np.abs(domain - CID_BOUND), pts))
+
 
 def get_X_y_from_domain(points: List[Point], domain: int, shuffle: bool=True) -> Tuple[torch.Tensor, torch.Tensor]:
-    filtered_pts = list(filter(lambda p: p.domain == domain, points))
+    filtered_pts = get_pts_from_domain(points, domain)
     X_dom = np.asarray([[p.x1, p.x2] for p in filtered_pts])
     y_dom = np.asarray([[p.label, p.domain] for p in filtered_pts])
     if shuffle:
@@ -162,7 +167,7 @@ def get_X_y_labels_from_source(points: List[Point]) -> Tuple[torch.Tensor]:
     return X_source_tensor, y_source_tensor[:, 0]
 
 def get_X_from_domain(points: List[Point], domain: int) -> torch.Tensor:
-    filtered_pts = list(filter(lambda p: p.domain == domain, points))
+    filtered_pts = get_pts_from_domain(points, domain)
     X_dom = np.asarray([[p.x1, p.x2] for p in filtered_pts])
     X_dom_tensor = torch.tensor(X_dom, dtype=torch.float32)
     return X_dom_tensor
@@ -173,7 +178,7 @@ def get_X_from_source_target(points: List[Point]) -> Tuple[torch.Tensor]:
     return X_source_tensor, X_target_tensor
 
 def get_X_y_percent_from_target(points: List[Point], percent=10) -> Tuple[torch.Tensor, torch.Tensor]:
-    target_pts = list(filter(lambda p: p.domain == T, points))
+    target_pts = get_pts_from_domain(points, T)
     X_target = np.asarray([[p.x1, p.x2] for p in target_pts])
     y_target = np.asarray([[torch.nan, p.domain] for p in target_pts]) # NaN for absence of label in target 
 
