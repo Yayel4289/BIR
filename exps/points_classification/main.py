@@ -13,25 +13,26 @@ Options:
     --continuous                                Decides if the domains are continuous or not.
 
     --model <model_name>                        Run <model_name> model (see --mode for models modes).
-                                                <model_name> can either be 'baseline', 'dann' or 'cida'.
+                                                <model_name> can either be 'baseline', 'dann', 'cida' or 'pcida'.
 
     --mode <mode_name>                          Specify the mode of the model
                                                 <mode_name> can either be 'fixed' or 'progressive'. 
-                                                This refers to the evolution of grl_lambda through the training of DANN.
-                                                Only available for DANN.
+                                                This refers to the evolution of grl_lambda through the training of DANN, CIDA or PCIDA.
+                                                Only available for DANN, CIDA and PCIDA.
 
     --hyperparam-selection                      Perform an hyperparameter selection depending on the <mode>.
                                                 If <mode_name> is 'fixed', the hyperparameter will be grl_lambda.
                                                 If <mode_name> is 'progressive', the hyperparameters will be max_grl_lambda and gamma, 
                                                 deciding the evolution curve of grl_lambda.
-                                                Only available for DANN.
+                                                Only available for DANN, CIDA or PCIDA.
 
     --comparison                                Compare models based on H-Divergence and F1 Score
-                                                (Both hyperparameter selections for DANN)
+                                                (Both hyperparameter selections for domain adaptation models)
 """
 
 from docopt import docopt
 from colorama import Fore, Style
+from tqdm import tqdm
 import sys
 import torch 
 from torch import nn
@@ -41,6 +42,7 @@ from exps.points_classification.data.data_generation import generate_fused_domai
 from exps.points_classification.utils.point import Point
 from models.abstract_model import AbstractModel
 from models.cida.cida import CIDA
+from models.cida.pcida import PCIDA
 from src.metrics.metrics import compute_model_h_divergence, compute_model_source_f1_score, compute_model_target_f1_score, get_table_string, has_model_h_divergence, make_metrics_dict, udpate_model_metrics_mean_std, update_model_metrics_lists
 from models.baseline.binary_classifier import BinaryClassifier
 from models.dann.dann import DANN
@@ -51,6 +53,7 @@ from src.training.hyperparameter_selection import select_model_progressive_hyper
 from src.training.lambda_config.progressive_lambda_config import ProgressiveLambdaConfig
 from src.training.lambda_config.fixed_lambda_config import FixedLambdaConfig
 from src.training.trainers.cida_trainer import CIDA_Trainer
+from src.training.trainers.pcida_trainer import PCIDA_Trainer
 
 DEFAULT_SEED = 42
 COMPARISON_SEEDS = [DEFAULT_SEED, 89, 0, 4289, 8942]
@@ -169,20 +172,42 @@ def make_table_comparison() -> None:
                 "verbose": False,
                 "plot": False
             }
+        },
+        "PCIDA Fixed λ": {
+            "run_func": run_adversarial_model,
+            "metrics": make_metrics_dict(),
+            "args": ["pcida", "fixed", True],
+            "kwargs": {
+                "verbose": False,
+                "plot": False
+            }
+        },
+        "PCIDA Progressive λ": {
+            "run_func": run_adversarial_model,
+            "metrics": make_metrics_dict(),
+            "args": ["pcida", "progressive", True],
+            "kwargs": {
+                "verbose": False,
+                "plot": False
+            }
         }
     }
-    for i, seed in enumerate(COMPARISON_SEEDS):
+    for i, seed in tqdm(enumerate(COMPARISON_SEEDS)):
         setup_seed(seed)
         train_val_pts = generate_intertwinning_moons()
         test_pts = generate_intertwinning_moons()
-        for model_name in models_config:
+        continuous_train_val_pts = generate_intertwinning_moons(continuous=True)
+        continuous_test_pts = generate_intertwinning_moons(continuous=True)
+        for model_name in tqdm(models_config):
+            model_train_val_pts = train_val_pts if "CIDA" not in model_name else continuous_train_val_pts
+            model_test_pts = test_pts if "CIDA" not in model_name else continuous_test_pts
             run_func = models_config[model_name]["run_func"]
             args = models_config[model_name].get("args")
             kwargs = models_config[model_name]["kwargs"]
-            model = run_func(train_val_pts, **kwargs) if args is None else run_func(train_val_pts, *args, **kwargs)
+            model = run_func(model_train_val_pts, **kwargs) if args is None else run_func(model_train_val_pts, *args, **kwargs)
 
             model_metrics = models_config[model_name]["metrics"]
-            update_model_metrics_lists(model_metrics, model, train_val_pts)
+            update_model_metrics_lists(model_metrics, model, model_test_pts)
             if i == len(COMPARISON_SEEDS) - 1: # last pass
                 udpate_model_metrics_mean_std(model_metrics)
 
@@ -211,7 +236,7 @@ def setup_seed(seed: int = DEFAULT_SEED) -> None:
 def validate_model_params(formatted_model_name: str, mode_name: str, hyperparam_selection: bool) -> bool: # True if model mode, else False
     if formatted_model_name is None:
         return False
-    if formatted_model_name not in ["baseline", "dann", "cida"]: 
+    if formatted_model_name not in ["baseline", "dann", "cida", "pcida"]: 
         print_help_and_exit(Fore.RED + f"Wrong model name: '{formatted_model_name}'" + Style.RESET_ALL)
     elif mode_name is not None and mode_name not in ["fixed", "progressive"]:
         print_help_and_exit(Fore.RED + f"Wrong mode: '{mode_name}'" + Style.RESET_ALL)
@@ -238,7 +263,7 @@ def main(args) -> None:
         points = generate_intertwinning_moons(continuous=args["--continuous"])
         plot_pts_only(points)
     elif model_mode:
-        continuous = formatted_model_name != "dann"
+        continuous = "cida" in formatted_model_name
         points = generate_intertwinning_moons(continuous=continuous)
         run_adversarial_model(points, formatted_model_name, mode_name, hyperparam_selection)
     else:
