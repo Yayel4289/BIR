@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Tuple
 import torch 
 from torch import nn
 from torch.utils.data import DataLoader
@@ -17,19 +17,23 @@ class DANN_Trainer(BaselineTrainer):
             source_val_loader: DataLoader, 
             target_train_loader: DataLoader,
             target_val_loader: DataLoader,
-            label_loss_function: Callable[torch.Tensor, torch.Tensor], 
-            domain_loss_function: Callable[torch.Tensor, torch.Tensor],
             lambda_config: AbstractLambdaConfig = ProgressiveLambdaConfig(1, 10),
             epochs: int = 1000, 
             lr: float = 0.01,
             verbose: bool = True
     ) -> None:
-        super().__init__(model, source_train_loader, source_val_loader, label_loss_function, epochs=epochs, lr=lr, verbose=verbose)
+        super().__init__(model, source_train_loader, source_val_loader, self._define_label_loss_func(), epochs=epochs, lr=lr, verbose=verbose)
         self.target_train_loader = target_train_loader
         self.target_val_loader = target_val_loader
-        self.domain_loss_function = domain_loss_function
+        self.domain_loss_function = self._define_domain_loss_func()
         self.lambda_config = lambda_config
         self.model_saver = ModelSaver(not self.lambda_config.is_progressive())
+
+    def _define_label_loss_func(self) -> Callable[torch.Tensor, torch.Tensor]:
+        return nn.CrossEntropyLoss()
+    
+    def _define_domain_loss_func(self) -> Callable[torch.Tensor, torch.Tensor]:
+        return nn.BCEWithLogitsLoss()
 
     def _train_epoch(self) -> Tuple[float, float, float, float, float]: 
         self.model.train()
