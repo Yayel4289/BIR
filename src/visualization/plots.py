@@ -44,6 +44,16 @@ def plot_decision_boundary(points: List[Point], model: AbstractModel):
     plt.contourf(xx1, xx2, predicted_labels, alpha=0.1, colors=["red", "blue"], levels=[0, 0.5, 1])
     plt.contour(xx1, xx2, predicted_labels, levels=[0.5], colors='black', linewidths=1.5)
 
+def plot_image(images: torch.Tensor, index: int, normalized: bool = True) -> None:
+    img = images[index]
+    img = img.permute(1, 2, 0) # (C, H, W) -> (H, W, C)
+    if normalized:
+        img *= 255
+    img = img.numpy().astype("uint8")
+
+    plt.imshow(img)
+    plt.axis("off")
+    plt.title(f"Image {index}")
+
 def show():
     plt.show()
-
