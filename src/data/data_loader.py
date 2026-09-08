@@ -27,7 +27,7 @@ def tensor_train_val_test_split(
     if len(X_tensor) != len(y_tensor):
         raise ValueError(f"X_tensor and y_tensor must be the same length ({len(X_tensor)} and {len(y_tensor)} resp.)")
     train_row_nbr = int(train_percent / 100 * len(X_tensor))
-    val_row_nbr = int((train_percent + val_percent) / 100 * len(X_tensor))
+    val_row_nbr = int(val_percent / 100 * len(X_tensor))
     test_row_nbr = len(X_tensor) - train_row_nbr - val_row_nbr
     X_train_tensor, X_val_tensor, X_test_tensor = X_tensor.split([train_row_nbr, val_row_nbr, test_row_nbr])
     y_train_tensor, y_val_tensor, y_test_tensor = y_tensor.split([train_row_nbr, val_row_nbr, test_row_nbr])

@@ -31,30 +31,28 @@ def fuse_hmnist_HAMmeta() -> None:
 
 
 def split_source_target(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    df_source = df["age" >  SOURCE_TARGET_AGE_SPLIT]
-    df_target = df["age" <= SOURCE_TARGET_AGE_SPLIT]
+    df_source = df[df["age"] >  SOURCE_TARGET_AGE_SPLIT]
+    df_target = df[df["age"] <= SOURCE_TARGET_AGE_SPLIT]
     return df_source, df_target
 
 
 def get_X_y_tensors_from_df(df: pd.DataFrame) -> Tuple[torch.Tensor, torch.Tensor]:
-    X_data = df.drop(columns=["age", "label"]).values.astype("float32")
+    X_data = df.drop(columns=["label", "age"]).values.astype("float32")
     n = X_data.shape[0]
     X_images = X_data.reshape(n, 28, 28, 3) # imgs rgb 28x28
     X = torch.from_numpy(X_images)
     X = X.permute(0, 3, 1, 2) # (N, H, W, C) -> (N, C, H, W)
     #print(np.allclose(X_data[0], X[0].permute(1, 2, 0).reshape(-1)))
     X /= 255 # norm
-    y = torch.from_numpy(df[["age", "label"]].values.astype("float32")) # domain, label
+    y = torch.from_numpy(df[["label", "age"]].values.astype("float32")) # label, domain
     return X, y
 
-def get_train_val_test_loaders() -> Tuple[DataLoader, DataLoader, DataLoader]:
+def get_train_val_test_loaders() -> Tuple[DataLoader, DataLoader, DataLoader, DataLoader, DataLoader, DataLoader]:
     df = pd.read_csv(DATA_PATH + "hmnist_age_label.csv")
     df_source, df_target = split_source_target(df)
     X_source_tensor, y_source_tensor = get_X_y_tensors_from_df(df_source)
     X_target_tensor, y_target_tensor = get_X_y_tensors_from_df(df_target)
-    source_train_loader, target_train_loader, 
-    source_val_loader, target_val_loader, 
-    source_test_loader, target_test_loader = get_source_target_train_val_test_loaders_from_tensor(
+    source_train_loader, target_train_loader, source_val_loader, target_val_loader, source_test_loader, target_test_loader = get_source_target_train_val_test_loaders_from_tensor(
         X_source_tensor, y_source_tensor,
         X_target_tensor, y_target_tensor
     )
