@@ -1,6 +1,7 @@
-from typing import Tuple
+from typing import Dict, Tuple
 import torch
 import numpy as np
+from torch.utils.data import DataLoader
 from torchmetrics import F1Score
 from exps.points_classification.data.data_generation import get_X_from_source_target, get_X_y_labels_from_source, get_X_y_labels_from_source_target, get_X_y_labels_from_target
 from exps.points_classification.utils.point import Point
@@ -8,40 +9,40 @@ from models.abstract_model import AbstractModel
 from models.dann.dann import DANN
 
 # Eq. n°1 from DANN paper
-def compute_empirical_h_divergence(model: DANN, X_source_tensor: torch.Tensor, X_target_tensor: torch.Tensor) -> float:
-    n = X_source_tensor.shape[0]
-    n_prime = X_target_tensor.shape[0]
-    X = torch.cat([X_source_tensor, X_target_tensor], dim=0)
-    
+def compute_model_h_divergence(model: DANN, source_test_loader: DataLoader, target_test_loader: DataLoader, **kwargs) -> float:
+    n = len(source_test_loader.dataset)
+    n_prime = len(target_test_loader.dataset)
+    correct_source = 0
+    correct_target = 0
     model.eval()
     with torch.inference_mode():
-        prediction_probs = model.predict_domain_prob(X)
-
-    correct_source = (prediction_probs[:n]  < 0.5).long().sum() # Source (0)
-    correct_target = (prediction_probs[n:] >= 0.5).long().sum() # Target (1)
+        for (X_source_test_batch, _) in source_test_loader:
+            prediction_probs = model.predict_domain_prob(X_source_test_batch)
+            correct_source += (prediction_probs  < 0.5).long().sum().item()
+        for (X_target_test_batch, _) in target_test_loader:
+            prediction_probs = model.predict_domain_prob(X_target_test_batch)
+            correct_target += (prediction_probs >= 0.5).long().sum().item()
     accuracy = (correct_source / n) + (correct_target / n_prime)
     h_divergence = 2 * (1 - accuracy)
-    return h_divergence.item()
+    return h_divergence
 
-def compute_model_h_divergence(model: AbstractModel, points: List[Point]) -> float:
-    X_source_tensor, X_target_tensor = get_X_from_source_target(points)
-    return compute_empirical_h_divergence(model, X_source_tensor, X_target_tensor)
+def compute_model_source_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, **kwargs) -> float:
+    return compute_model_f1_score_from_loader(model, source_test_loader, **kwargs)
 
-def compute_model_source_f1_score(model: AbstractModel, points: List[Point]) -> float:
-    X_source_tensor, y_source_labels_tensor = get_X_y_labels_from_source(points)
-    source_prediction_probs = model.predict_probs(X_source_tensor)
-    source_predictions = (source_prediction_probs[:, 1] > source_prediction_probs[:, 0]).long().ravel()
-    f1 = F1Score(task="binary")
-    source_f1_score = f1(source_predictions, y_source_labels_tensor)
-    return source_f1_score.item()
+def compute_model_target_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, **kwargs) -> float:
+    return compute_model_f1_score_from_loader(model, target_test_loader, **kwargs)
 
-def compute_model_target_f1_score(model: AbstractModel, points: List[Point]) -> float:
-    X_target_tensor, y_target_labels_tensor = get_X_y_labels_from_target(points)
-    target_prediction_probs = model.predict_probs(X_target_tensor)
-    target_predictions = (target_prediction_probs[:, 1] > target_prediction_probs[:, 0]).long().ravel()
-    f1 = F1Score(task="binary")
-    target_f1_score = f1(target_predictions, y_target_labels_tensor)
-    return target_f1_score.item()
+def compute_model_f1_score_from_loader(model: AbstractModel, test_loader: DataLoader, **kwargs) -> float:
+    model.eval()
+    f1 = F1Score(**kwargs) # 'binary' or 'multiclass' + num_classes if necessary
+    with torch.inference_mode():
+        for (X_test_batch, y_test_batch) in test_loader:
+            y_test_batch_labels = y_test_batch[:, 0]
+            prediction_probs = model.predict_probs(X_test_batch)
+            predictions = torch.argmax(prediction_probs, dim=1)
+            f1.update(predictions, y_test_batch_labels)
+    f1.compute()
+    return f1._computed.item()
 
 # Dict utils
 def make_metrics_dict(h_divergence: bool=True):
@@ -58,9 +59,9 @@ def make_metrics_dict(h_divergence: bool=True):
 def has_model_h_divergence(models_config, model_name):
     return models_config[model_name]["metrics"].get("h_divergences") is not None
 
-def update_model_metrics_lists(model_metrics, model: AbstractModel, train_val_pts: List[Point]):
+def update_model_metrics_lists(model_metrics, model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, **kwargs):
     for metric in model_metrics:
-        computed_metric = model_metrics[metric]["function"](model, train_val_pts)
+        computed_metric = model_metrics[metric]["function"](model, source_test_loader, target_test_loader, **kwargs)
         model_metrics[metric]["list"].append(computed_metric)
 
 def udpate_model_metrics_mean_std(model_metrics):

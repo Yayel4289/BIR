@@ -120,7 +120,6 @@ def get_target_train_val_test_loaders_from_tensors(
     target_test_dataset = TensorDataset(X_target_test_tensor, y_target_test_tensor)
     target_train_sampler = CyclingSampler(target_train_dataset, batch_size=batch_size)
     target_val_sampler = CyclingSampler(target_val_dataset, batch_size=batch_size)
-    target_test_sampler = CyclingSampler(target_test_dataset, batch_size=batch_size)
 
     target_train_loader = DataLoader(
         target_train_dataset,
@@ -135,13 +134,32 @@ def get_target_train_val_test_loaders_from_tensors(
     target_test_loader = DataLoader(
         target_test_dataset,
         batch_size=batch_size,
-        sampler=target_test_sampler
+        shuffle=False
     )
 
     return target_train_loader, target_val_loader, target_test_loader
 
-
 def get_source_target_loaders_from_tensors(
+        X_source_tensor: torch.Tensor, y_source_tensor: torch.Tensor,
+        X_target_tensor: torch.Tensor, y_target_tensor: torch.Tensor,
+        batch_size=32
+        ) -> Tuple[DataLoader, DataLoader]:
+    source_dataset = TensorDataset(X_source_tensor, y_source_tensor)
+    target_dataset = TensorDataset(X_target_tensor, y_target_tensor)
+    source_loader = DataLoader(
+        source_dataset,
+        batch_size=batch_size,
+        shuffle=False
+    )
+    target_loader = DataLoader(
+        target_dataset,
+        batch_size=batch_size,
+        shuffle=False
+    )
+    return source_loader, target_loader
+
+
+def get_source_target_train_val_loaders_from_tensors(
         X_source_tensor: torch.Tensor, y_source_tensor: torch.Tensor,
         X_target_tensor: torch.Tensor, y_target_tensor: torch.Tensor,
         batch_size=32

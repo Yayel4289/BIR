@@ -1,10 +1,10 @@
-from typing import Callable, List, Tuple
+from typing import Callable, Dict, List, Tuple
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from exps.points_classification.utils.moon_domain import MoonDomain
 from exps.points_classification.utils.point import Point
-from src.data.data_loader import get_source_loaders_from_tensors, get_source_target_loaders_from_tensors, tensor_train_val_split
+from src.data.data_loader import get_source_loaders_from_tensors, get_source_target_train_val_loaders_from_tensors, tensor_train_val_split
 from exps.points_classification.utils.domain import Domain
 from sklearn.datasets import make_moons
 
@@ -158,6 +158,11 @@ def get_X_y_labels_from_source_target(points: List[Point]) -> Tuple[torch.Tensor
     y_tensor = torch.cat((y_source_tensor, y_target_tensor))
     return X_tensor, y_tensor[:, 0]
 
+def get_X_y_from_source_target(points: List[Point]) -> Tuple[torch.Tensor, torch.Tensor,torch.Tensor, torch.Tensor]:
+    X_source_tensor, y_source_tensor = get_X_y_from_domain(points, S, shuffle=False)
+    X_target_tensor, y_target_tensor = get_X_y_from_domain(points, T, shuffle=False)
+    return X_source_tensor, y_source_tensor, X_target_tensor, y_target_tensor
+
 def get_X_y_labels_from_target(points: List[Point]) -> Tuple[torch.Tensor]:
     X_target_tensor, y_target_tensor = get_X_y_from_domain(points, T, shuffle=False)
     return X_target_tensor, y_target_tensor[:, 0]
@@ -200,5 +205,10 @@ def get_train_val_loaders_from_source(points: List[Point]) -> Tuple[DataLoader, 
 def get_train_val_loaders_from_source_target(points: List[Point]) -> Tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
     X_source_tensor, y_source_tensor = get_X_y_from_domain(points, S, shuffle=False)
     X_target_tensor, y_target_tensor = get_X_y_percent_from_target(points)
-    return get_source_target_loaders_from_tensors(X_source_tensor, y_source_tensor, X_target_tensor, y_target_tensor)
+    return get_source_target_train_val_loaders_from_tensors(X_source_tensor, y_source_tensor, X_target_tensor, y_target_tensor)
+
+def get_source_target_loaders_from_points(points: List[Point]) -> Tuple[DataLoader]:
+    X_source_tensor, y_source_tensor = get_X_y_from_domain(points, S, shuffle=False)
+    X_target_tensor, y_target_tensor = get_X_y_from_domain(points, T, shuffle=False)
+    return get_source_loaders_from_tensors(X_source_tensor, y_source_tensor, X_target_tensor, y_target_tensor)
 

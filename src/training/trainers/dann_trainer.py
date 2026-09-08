@@ -42,8 +42,8 @@ class DANN_Trainer(BaselineTrainer):
         epoch_source_domain_loss = 0
         epoch_target_domain_loss = 0
         epoch_domain_loss = 0
-        for (X_source_train_batch, y_source_train_batch), (X_target_train_batch, y_target_train_batch) \
-        in  zip(self.source_train_loader, self.target_train_loader):
+        for (X_source_train_batch, y_source_train_batch) in self.source_train_loader:
+            X_target_train_batch, y_target_train_batch = next(iter(self.target_train_loader))
 
             source_labels_pred, source_domains_pred = self.model(X_source_train_batch, self.lambda_config.get_grl_lambda())
             _, target_domains_pred = self.model(X_target_train_batch, self.lambda_config.get_grl_lambda(), only_domain=True)

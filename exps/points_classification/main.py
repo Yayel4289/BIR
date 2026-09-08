@@ -38,13 +38,13 @@ import torch
 from torch import nn
 import numpy as np 
 
-from exps.points_classification.data.data_generation import generate_fused_domains, generate_intertwinning_moons, generate_split_domains, get_X_from_source_target, get_train_val_loaders_from_source, get_train_val_loaders_from_source_target
+from exps.points_classification.data.data_generation import generate_fused_domains, generate_intertwinning_moons, generate_split_domains, get_X_from_source_target, get_source_target_loaders_from_points, get_train_val_loaders_from_source, get_train_val_loaders_from_source_target
 from exps.points_classification.utils.point import Point
 from models.abstract_model import AbstractModel
 from models.cida.cida import CIDA
 from models.cida.pcida import PCIDA
-from src.metrics.metrics import compute_model_h_divergence, compute_model_source_f1_score, compute_model_target_f1_score, get_table_string, has_model_h_divergence, make_metrics_dict, udpate_model_metrics_mean_std, update_model_metrics_lists
-from models.baseline.binary_classifier import BinaryClassifier
+from src.metrics.metrics import compute_model_f1_score_from_loader, compute_model_h_divergence, compute_model_source_f1_score, compute_model_target_f1_score, get_table_string, has_model_h_divergence, make_metrics_dict, udpate_model_metrics_mean_std, update_model_metrics_lists
+from models.baseline.classifier import Classifier
 from models.dann.dann import DANN
 import src.visualization.plots as plots
 from src.training.trainers.baseline_trainer import BaselineTrainer
@@ -62,10 +62,10 @@ def get_trainer_model_from_model_name(formatted_model_name: str) -> Tuple[Type[D
     acronym = formatted_model_name.upper()
     return globals().get(acronym), globals().get(acronym + "_Trainer")
 
-def run_baseline(points: List[Point], plot: bool = True, verbose: bool = True) -> BinaryClassifier:
+def run_baseline(points: List[Point], plot: bool = True, verbose: bool = True) -> Classifier:
     train_loader, val_loader = get_train_val_loaders_from_source(points)
 
-    baseline = BinaryClassifier()
+    baseline = Classifier()
     baseline_trainer = BaselineTrainer(
         baseline, 
         train_loader, 
@@ -75,7 +75,10 @@ def run_baseline(points: List[Point], plot: bool = True, verbose: bool = True) -
     )
     baseline_trainer.train_model()
     if verbose:
-        source_f1_score, target_f1_score = compute_model_source_f1_score(baseline, points), compute_model_target_f1_score(baseline, points)
+        test_pts = generate_intertwinning_moons(continuous=False)
+        source_test_loader, target_test_loader = get_source_target_loaders_from_points(test_pts)
+        source_f1_score = compute_model_f1_score_from_loader(baseline, source_test_loader, task="binary")
+        target_f1_score = compute_model_f1_score_from_loader(baseline, target_test_loader, task="binary")
         print("Source F1 Score:", source_f1_score)
         print("Target F1 Score:", target_f1_score)
     if plot:
@@ -117,8 +120,11 @@ def run_adversarial_model(points: List[Point], formatted_model_name: str, mode: 
     trainer.train_model()
     
     if verbose:
-        source_f1_score, target_f1_score = compute_model_source_f1_score(model, points), compute_model_target_f1_score(model, points)
-        h_divergence = compute_model_h_divergence(model, points)
+        test_pts = generate_intertwinning_moons(continuous="cida" in formatted_model_name)
+        source_test_loader, target_test_loader = get_source_target_loaders_from_points(test_pts)
+        source_f1_score = compute_model_f1_score_from_loader(model, source_test_loader, task="binary")
+        target_f1_score = compute_model_f1_score_from_loader(model, target_test_loader, task="binary")
+        h_divergence = compute_model_h_divergence(model, source_test_loader, target_test_loader)
         print("Source F1 Score:", source_f1_score)
         print("Target F1 Score:", target_f1_score)
         print("H-Divergence:", h_divergence)
@@ -195,19 +201,22 @@ def make_table_comparison() -> None:
     for i, seed in tqdm(enumerate(COMPARISON_SEEDS)):
         setup_seed(seed)
         train_val_pts = generate_intertwinning_moons()
-        test_pts = generate_intertwinning_moons()
         continuous_train_val_pts = generate_intertwinning_moons(continuous=True)
+        test_pts = generate_intertwinning_moons()
         continuous_test_pts = generate_intertwinning_moons(continuous=True)
+
         for model_name in tqdm(models_config):
             model_train_val_pts = train_val_pts if "CIDA" not in model_name else continuous_train_val_pts
             model_test_pts = test_pts if "CIDA" not in model_name else continuous_test_pts
+            source_test_loader, target_test_loader = get_source_target_loaders_from_points(model_test_pts)
             run_func = models_config[model_name]["run_func"]
             args = models_config[model_name].get("args")
             kwargs = models_config[model_name]["kwargs"]
             model = run_func(model_train_val_pts, **kwargs) if args is None else run_func(model_train_val_pts, *args, **kwargs)
 
+            
             model_metrics = models_config[model_name]["metrics"]
-            update_model_metrics_lists(model_metrics, model, model_test_pts)
+            update_model_metrics_lists(model_metrics, model, source_test_loader, target_test_loader, task="binary")
             if i == len(COMPARISON_SEEDS) - 1: # last pass
                 udpate_model_metrics_mean_std(model_metrics)
 
@@ -265,7 +274,10 @@ def main(args) -> None:
     elif model_mode:
         continuous = "cida" in formatted_model_name
         points = generate_intertwinning_moons(continuous=continuous)
-        run_adversarial_model(points, formatted_model_name, mode_name, hyperparam_selection)
+        if formatted_model_name == "baseline":
+            run_baseline(points)
+        else:
+            run_adversarial_model(points, formatted_model_name, mode_name, hyperparam_selection)
     else:
         print_help_and_exit()
 
