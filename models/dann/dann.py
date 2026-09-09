@@ -5,9 +5,9 @@ from models.abstract_model import AbstractModel
 from models.dann.gradient_reversal_layer import GradientReversalLayer
 
 class DANN(AbstractModel):
-    def __init__(self, input_dim: int = 2, output_dim: int = 2, hidden_dim: int=32, convolutional: bool = False, _domain_output_dim: int = 1) -> None:
+    def __init__(self, input_dim: int = 2, output_dim: int = 2, hidden_dim: int=32, convolutional: bool = False, _domain_output_dim: int = 1, device: torch.device = None) -> None:
         # output_dim = L
-        super().__init__(input_dim, output_dim, hidden_dim, convolutional)
+        super().__init__(input_dim, output_dim, hidden_dim, convolutional, device)
         self.domain_classifier = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim // 2),
             nn.ReLU(),

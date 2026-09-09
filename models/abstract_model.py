@@ -4,8 +4,10 @@ from torch import nn
 import torch
 
 class AbstractModel(nn.Module, ABC):
-    def __init__(self, input_dim: int = 2, output_dim: int = 2, hidden_dim: int = 32, convolutional: bool = False) -> None:
+    def __init__(self, input_dim: int = 2, output_dim: int = 2, hidden_dim: int = 32, convolutional: bool = False, device: torch.device = None) -> None:
         super().__init__()
+        if device is not None:
+            self.to(device)
         self.feature_extractor = self._define_linear_feature_extractor(input_dim, hidden_dim) if not convolutional else \
                                  self._define_convolutional_feature_extractor(input_dim, hidden_dim)
 

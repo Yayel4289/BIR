@@ -7,9 +7,10 @@ from exps.points_classification.data.data_generation import get_X_from_source_ta
 from exps.points_classification.utils.point import Point
 from models.abstract_model import AbstractModel
 from models.dann.dann import DANN
+from src.utils.utils import to_device
 
 # Eq. n°1 from DANN paper
-def compute_model_h_divergence(model: DANN, source_test_loader: DataLoader, target_test_loader: DataLoader, **kwargs) -> float:
+def compute_model_h_divergence(model: DANN, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
     n = len(source_test_loader.dataset)
     n_prime = len(target_test_loader.dataset)
     correct_source = 0
@@ -17,26 +18,29 @@ def compute_model_h_divergence(model: DANN, source_test_loader: DataLoader, targ
     model.eval()
     with torch.inference_mode():
         for (X_source_test_batch, _) in source_test_loader:
+            X_source_test_batch = to_device(device, X_source_test_batch)
             prediction_probs = model.predict_domain_prob(X_source_test_batch)
             correct_source += (prediction_probs  < 0.5).long().sum().item()
         for (X_target_test_batch, _) in target_test_loader:
+            X_target_test_batch = to_device(device, X_target_test_batch)
             prediction_probs = model.predict_domain_prob(X_target_test_batch)
             correct_target += (prediction_probs >= 0.5).long().sum().item()
     accuracy = (correct_source / n) + (correct_target / n_prime)
     h_divergence = 2 * (1 - accuracy)
     return h_divergence
 
-def compute_model_source_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, **kwargs) -> float:
-    return compute_model_f1_score_from_loader(model, source_test_loader, **kwargs)
+def compute_model_source_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
+    return compute_model_f1_score_from_loader(model, source_test_loader, device=device **kwargs)
 
-def compute_model_target_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, **kwargs) -> float:
-    return compute_model_f1_score_from_loader(model, target_test_loader, **kwargs)
+def compute_model_target_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
+    return compute_model_f1_score_from_loader(model, target_test_loader, device=device **kwargs)
 
-def compute_model_f1_score_from_loader(model: AbstractModel, test_loader: DataLoader, **kwargs) -> float:
+def compute_model_f1_score_from_loader(model: AbstractModel, test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
     model.eval()
     f1 = F1Score(**kwargs) # 'binary' or 'multiclass' + num_classes if necessary
     with torch.inference_mode():
         for (X_test_batch, y_test_batch) in test_loader:
+            X_test_batch, y_test_batch = to_device(device, X_test_batch, y_test_batch)
             y_test_batch_labels = y_test_batch[:, 0]
             prediction_probs = model.predict_probs(X_test_batch)
             predictions = torch.argmax(prediction_probs, dim=1)

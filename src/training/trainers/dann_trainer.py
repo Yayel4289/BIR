@@ -20,9 +20,10 @@ class DANN_Trainer(BaselineTrainer):
             lambda_config: AbstractLambdaConfig = ProgressiveLambdaConfig(1, 10),
             epochs: int = 1000, 
             lr: float = 0.01,
-            verbose: bool = True
+            verbose: bool = True,
+            device: torch.device = None
     ) -> None:
-        super().__init__(model, source_train_loader, source_val_loader, self._define_label_loss_func(), epochs=epochs, lr=lr, verbose=verbose)
+        super().__init__(model, source_train_loader, source_val_loader, self._define_label_loss_func(), epochs=epochs, lr=lr, verbose=verbose, device=device)
         self.target_train_loader = target_train_loader
         self.target_val_loader = target_val_loader
         self.domain_loss_function = self._define_domain_loss_func()
@@ -44,6 +45,10 @@ class DANN_Trainer(BaselineTrainer):
         epoch_domain_loss = 0
         for (X_source_train_batch, y_source_train_batch) in self.source_train_loader:
             X_target_train_batch, y_target_train_batch = next(iter(self.target_train_loader))
+            X_source_train_batch, y_source_train_batch, X_target_train_batch, y_target_train_batch = self.to_device(
+                X_source_train_batch, y_source_train_batch,
+                X_target_train_batch, y_target_train_batch
+            )
 
             source_labels_pred, source_domains_pred = self.model(X_source_train_batch, self.lambda_config.get_grl_lambda())
             _, target_domains_pred = self.model(X_target_train_batch, self.lambda_config.get_grl_lambda(), only_domain=True)
@@ -77,9 +82,12 @@ class DANN_Trainer(BaselineTrainer):
         val_source_label_loss = 0
         val_domain_loss = 0
         with torch.inference_mode():
-            for (X_source_val_batch, y_source_val_batch), (X_target_val_batch, y_target_val_batch) \
-            in  zip(self.source_val_loader, self.target_val_loader):
-
+            for (X_source_val_batch, y_source_val_batch) in self.source_val_loader:
+                X_target_val_batch, y_target_val_batch = next(iter(self.target_val_loader))
+                X_source_val_batch, y_source_val_batch, X_target_val_batch, y_target_val_batch = self.to_device(
+                    X_source_val_batch, y_source_val_batch,
+                    X_target_val_batch, y_target_val_batch
+                )
                 source_labels_pred, source_domains_pred = self.model(X_source_val_batch, self.lambda_config.get_grl_lambda())
                 _, target_domains_pred = self.model(X_target_val_batch, self.lambda_config.get_grl_lambda(), only_domain=True)
                 source_val_batch_labels, source_val_batch_domains = y_source_val_batch[:, 0].long(), y_source_val_batch[:, 1].view(-1, 1)

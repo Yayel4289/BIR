@@ -72,28 +72,29 @@ def is_model_continuous(formatted_model_name: str) -> bool:
     cida = "cida"
     return cida in formatted_model_name or cida.upper() in formatted_model_name
 
-def run_baseline(data_loader_set: DataLoaderSet, plot: bool = True, verbose: bool = True, model_kwargs: Dict = None, f1_kwargs: Dict = None) -> Classifier:
+def run_baseline(data_loader_set: DataLoaderSet, plot: bool = True, verbose: bool = True, device: torch.device = None, model_kwargs: Dict = None, f1_kwargs: Dict = None) -> Classifier:
     source_train_loader, source_val_loader, source_test_loader, _, _, target_test_loader = data_loader_set
 
-    baseline = Classifier(**model_kwargs)
+    baseline = Classifier(device=device, **model_kwargs)
     baseline_trainer = BaselineTrainer(
         baseline, 
         source_train_loader, 
         source_val_loader, 
         nn.CrossEntropyLoss(),
-        verbose=verbose
+        verbose=verbose,
+        device=device
     )
     baseline_trainer.train_model()
     if verbose:
-        source_f1_score = compute_model_f1_score_from_loader(baseline, source_test_loader, **f1_kwargs)
-        target_f1_score = compute_model_f1_score_from_loader(baseline, target_test_loader, **f1_kwargs)
+        source_f1_score = compute_model_f1_score_from_loader(baseline, source_test_loader, device=device, **f1_kwargs)
+        target_f1_score = compute_model_f1_score_from_loader(baseline, target_test_loader, device=device, **f1_kwargs)
         print("Source F1 Score:", source_f1_score)
         print("Target F1 Score:", target_f1_score)
     if plot and data_loader_set.has_test_pts():
         plot_model(data_loader_set.get_test_pts(), baseline)
     return baseline
 
-def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: str, mode: str, hyperparam_selection: bool, plot: bool = True, verbose: bool = True, model_kwargs: Dict = None, f1_kwargs: Dict = None) -> DANN:
+def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: str, mode: str, hyperparam_selection: bool, plot: bool = True, verbose: bool = True, device: torch.device = None, model_kwargs: Dict = None, f1_kwargs: Dict = None) -> DANN:
     source_train_loader, source_val_loader, source_test_loader, target_train_loader, target_val_loader, target_test_loader = data_loader_set
     ModelCass, TrainerClass = get_trainer_model_from_model_name(formatted_model_name)
     
@@ -105,6 +106,7 @@ def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: 
                 ModelCass, TrainerClass,
                 source_train_loader, source_val_loader, target_train_loader, target_val_loader,
                 verbose=verbose,
+                device=device,
                 **model_kwargs
             )
             kwargs = {"lambda_config": FixedLambdaConfig(grl_lambda)}
@@ -114,25 +116,27 @@ def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: 
                 ModelCass, TrainerClass,
                 source_train_loader, source_val_loader, target_train_loader, target_val_loader, 
                 verbose=verbose,
+                device=device,
                 **model_kwargs
             )
             kwargs = {"lambda_config": ProgressiveLambdaConfig(max_grl_lambda, gamma)}
     else:
         kwargs = {"lambda_config": ProgressiveLambdaConfig(1, 10) if mode == "progressive" else FixedLambdaConfig(5)}
 
-    model = ModelCass(**model_kwargs)
+    model = ModelCass(device=device, **model_kwargs)
     trainer = TrainerClass(
         model, 
         source_train_loader, source_val_loader, target_train_loader, target_val_loader,
         verbose=verbose,
+        device=device,
         **kwargs
     )
     trainer.train_model()
     
     if verbose:
-        source_f1_score = compute_model_f1_score_from_loader(model, source_test_loader, **f1_kwargs)
-        target_f1_score = compute_model_f1_score_from_loader(model, target_test_loader, **f1_kwargs)
-        h_divergence = compute_model_h_divergence(model, source_test_loader, target_test_loader)
+        source_f1_score = compute_model_f1_score_from_loader(model, source_test_loader, device=device, **f1_kwargs)
+        target_f1_score = compute_model_f1_score_from_loader(model, target_test_loader, device=device, **f1_kwargs)
+        h_divergence = compute_model_h_divergence(model, source_test_loader, target_test_loader, device=device)
         print("Source F1 Score:", source_f1_score)
         print("Target F1 Score:", target_f1_score)
         print("H-Divergence:", h_divergence)
@@ -270,11 +274,13 @@ def validate_model_params(formatted_model_name: str, mode_name: str, hyperparam_
 
 
 def main(args) -> None:
-    if args["-h"]: 
+    if args["-h"]:
         print_help_and_exit()
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if args["--comparison"]:
         exp  = "moons" if args["--moons"] else "skin-cancer"
-        make_table_comparison(exp)
+        make_table_comparison(exp, device)
         sys.exit(0)
 
     formatted_model_name = args["--model"].lower() if args["--model"] is not None else None
@@ -301,9 +307,9 @@ def main(args) -> None:
             f1_kwargs = {"task": "multiclass", "num_classes": 7}
 
         if formatted_model_name == "baseline":
-            run_baseline(data_loader_set, model_kwargs=model_kwargs, f1_kwargs=f1_kwargs)
+            run_baseline(data_loader_set, device=device, model_kwargs=model_kwargs, f1_kwargs=f1_kwargs)
         else:
-            run_adversarial_model(data_loader_set, formatted_model_name, mode_name, hyperparam_selection, model_kwargs=model_kwargs, f1_kwargs=f1_kwargs)
+            run_adversarial_model(data_loader_set, formatted_model_name, mode_name, hyperparam_selection, device=device, model_kwargs=model_kwargs, f1_kwargs=f1_kwargs)
     else:
         print_help_and_exit()
 

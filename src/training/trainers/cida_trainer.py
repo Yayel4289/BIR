@@ -14,7 +14,8 @@ class CIDA_Trainer(DANN_Trainer):
             lambda_config: AbstractLambdaConfig = ..., 
             epochs: int = 1000, 
             lr: float = 0.01, 
-            verbose: bool = True
+            verbose: bool = True,
+            device: torch.device = None
     ) -> None:
         super().__init__(
             model, 
@@ -22,7 +23,8 @@ class CIDA_Trainer(DANN_Trainer):
             lambda_config, 
             epochs, 
             lr, 
-            verbose
+            verbose,
+            device=device
         )
 
     def _define_domain_loss_func(self) -> Callable[torch.Tensor, torch.Tensor]:
