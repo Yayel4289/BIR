@@ -30,10 +30,10 @@ def compute_model_h_divergence(model: DANN, source_test_loader: DataLoader, targ
     return h_divergence
 
 def compute_model_source_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
-    return compute_model_f1_score_from_loader(model, source_test_loader, device=device **kwargs)
+    return compute_model_f1_score_from_loader(model, source_test_loader, device=device, **kwargs)
 
 def compute_model_target_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
-    return compute_model_f1_score_from_loader(model, target_test_loader, device=device **kwargs)
+    return compute_model_f1_score_from_loader(model, target_test_loader, device=device, **kwargs)
 
 def compute_model_f1_score_from_loader(model: AbstractModel, test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
     model.eval()
@@ -63,9 +63,9 @@ def make_metrics_dict(h_divergence: bool=True):
 def has_model_h_divergence(models_config, model_name):
     return models_config[model_name]["metrics"].get("h_divergences") is not None
 
-def update_model_metrics_lists(model_metrics, model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, **kwargs):
+def update_model_metrics_lists(model_metrics, model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device, **kwargs):
     for metric in model_metrics:
-        computed_metric = model_metrics[metric]["function"](model, source_test_loader, target_test_loader, **kwargs)
+        computed_metric = model_metrics[metric]["function"](model, source_test_loader, target_test_loader, device=device, **kwargs)
         model_metrics[metric]["list"].append(computed_metric)
 
 def udpate_model_metrics_mean_std(model_metrics):

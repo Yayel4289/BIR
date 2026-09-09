@@ -145,7 +145,7 @@ def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: 
     return model
 
 
-def make_table_comparison(exp: str) -> None:
+def make_table_comparison(exp: str, device: torch.device) -> None:
     model_kwargs = {}
     metrics_kwargs = {}
     data_loader_set_function: Callable[bool, DataLoaderSet]
@@ -229,13 +229,13 @@ def make_table_comparison(exp: str) -> None:
             run_func = models_config[model_name]["run_func"]
             args = models_config[model_name].get("args")
             kwargs = models_config[model_name]["kwargs"]
-            model = run_func(data_loader_set, model_kwargs=model_kwargs, **kwargs) if args is None else \
-                    run_func(data_loader_set, *args, model_kwargs=model_kwargs, **kwargs)
+            model = run_func(data_loader_set, device=device, model_kwargs=model_kwargs, **kwargs) if args is None else \
+                    run_func(data_loader_set, *args, device=device, model_kwargs=model_kwargs, **kwargs)
 
             
             model_metrics = models_config[model_name]["metrics"]
             source_test_loader, target_test_loader = data_loader_set.get_test_loaders()
-            update_model_metrics_lists(model_metrics, model, source_test_loader, target_test_loader, **metrics_kwargs)
+            update_model_metrics_lists(model_metrics, model, source_test_loader, target_test_loader, device, **metrics_kwargs)
             if i == len(COMPARISON_SEEDS) - 1: # last pass
                 udpate_model_metrics_mean_std(model_metrics)
 
