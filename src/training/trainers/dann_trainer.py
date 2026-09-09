@@ -27,7 +27,7 @@ class DANN_Trainer(BaselineTrainer):
         self.target_val_loader = target_val_loader
         self.domain_loss_function = self._define_domain_loss_func()
         self.lambda_config = lambda_config
-        self.model_saver = ModelSaver(not self.lambda_config.is_progressive())
+        self.model_saver = ModelSaver(early_stopping_enabled=not self.lambda_config.is_progressive())
 
     def _define_label_loss_func(self) -> Callable[torch.Tensor, torch.Tensor]:
         return nn.CrossEntropyLoss()

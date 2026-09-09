@@ -14,8 +14,8 @@ from src.training.trainers.baseline_trainer import BaselineTrainer
 
 source_train_loader, target_train_loader, source_val_loader, target_val_loader, source_test_loader, target_test_loader = get_train_val_test_loaders()
 
-model = CIDA(input_dim=None, output_dim=7, convolutional=True)
-trainer = CIDA_Trainer(
+model = DANN(input_dim=None, output_dim=7, convolutional=True)
+trainer = DANN_Trainer(
     model,
     source_train_loader, source_val_loader,
     target_train_loader, target_val_loader,

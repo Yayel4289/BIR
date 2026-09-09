@@ -11,6 +11,9 @@ LABELS_TYPE = CategoricalDtype(categories=["akiec", "bcc", "bkl", "df", "nv", "v
 SOURCE_TARGET_AGE_SPLIT = 30
 DATA_PATH = "exps/skinCancer/data/"
 
+MAX_COLOR = 255
+MAX_AGE = 85
+
 def fuse_hmnist_HAMmeta() -> None:
     hmnist_data = pd.read_csv(DATA_PATH + "hmnist_28_28_RGB.csv")
     metadata = pd.read_csv(DATA_PATH + "HAM10000_metadata.csv")
@@ -42,9 +45,9 @@ def get_X_y_tensors_from_df(df: pd.DataFrame) -> Tuple[torch.Tensor, torch.Tenso
     X_images = X_data.reshape(n, 28, 28, 3) # imgs rgb 28x28
     X = torch.from_numpy(X_images)
     X = X.permute(0, 3, 1, 2) # (N, H, W, C) -> (N, C, H, W)
-    #print(np.allclose(X_data[0], X[0].permute(1, 2, 0).reshape(-1)))
-    X /= 255 # norm
+    X /= MAX_COLOR # normalization of colors
     y = torch.from_numpy(df[["label", "age"]].values.astype("float32")) # label, domain
+    y[:, 1] /= MAX_AGE
     return X, y
 
 def get_train_val_test_loaders() -> Tuple[DataLoader, DataLoader, DataLoader, DataLoader, DataLoader, DataLoader]:
