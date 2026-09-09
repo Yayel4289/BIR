@@ -25,8 +25,11 @@ class DataLoaderSet():
             self.target_train_loader, self.target_val_loader, self.target_test_loader, 
         ))
 
-    def has_test_pts(self):
+    def get_test_loaders(self) -> Tuple[DataLoader]:
+        return self.source_test_loader, self.target_test_loader
+
+    def has_test_pts(self) -> bool:
         return self.test_pts is not None
 
-    def get_test_pts(self):
+    def get_test_pts(self) -> List[Point]:
         return self.test_pts

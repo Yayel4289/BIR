@@ -33,6 +33,7 @@ Options:
                                                 (Both hyperparameter selections for domain adaptation models)
 """
 
+from typing import Callable
 from docopt import docopt
 from colorama import Fore, Style
 from tqdm import tqdm
@@ -68,7 +69,8 @@ def get_trainer_model_from_model_name(formatted_model_name: str) -> Tuple[Type[D
     return globals().get(acronym), globals().get(acronym + "_Trainer")
 
 def is_model_continuous(formatted_model_name: str) -> bool:
-    return "cida" in formatted_model_name
+    cida = "cida"
+    return cida in formatted_model_name or cida.upper() in formatted_model_name
 
 def run_baseline(data_loader_set: DataLoaderSet, plot: bool = True, verbose: bool = True, model_kwargs: Dict = None, f1_kwargs: Dict = None) -> Classifier:
     source_train_loader, source_val_loader, source_test_loader, _, _, target_test_loader = data_loader_set
@@ -76,8 +78,8 @@ def run_baseline(data_loader_set: DataLoaderSet, plot: bool = True, verbose: boo
     baseline = Classifier(**model_kwargs)
     baseline_trainer = BaselineTrainer(
         baseline, 
-        train_loader, 
-        val_loader, 
+        source_train_loader, 
+        source_val_loader, 
         nn.CrossEntropyLoss(),
         verbose=verbose
     )
@@ -139,7 +141,17 @@ def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: 
     return model
 
 
-def make_table_comparison() -> None:
+def make_table_comparison(exp: str) -> None:
+    model_kwargs = {}
+    metrics_kwargs = {}
+    data_loader_set_function: Callable[bool, DataLoaderSet]
+    if exp == "moons":
+        metrics_kwargs = {"task": "binary"}
+        data_loader_set_function = get_moons_data_loader_set
+    elif exp == "skin-cancer":
+        model_kwargs = {"input_dim": 3, "output_dim": 7, "convolutional": True}
+        metrics_kwargs = {"task": "multiclass", "num_classes": 7}
+        data_loader_set_function = get_skin_cancer_data_loader_set
     models_config =  {
         "Baseline": {
             "run_func": run_baseline,
@@ -206,23 +218,20 @@ def make_table_comparison() -> None:
     }
     for i, seed in tqdm(enumerate(COMPARISON_SEEDS)):
         setup_seed(seed)
-        train_val_pts = generate_intertwinning_moons()
-        continuous_train_val_pts = generate_intertwinning_moons(continuous=True)
-        test_pts = generate_intertwinning_moons()
-        continuous_test_pts = generate_intertwinning_moons(continuous=True)
-
+        discrete_data_loader_set = data_loader_set_function(False)
+        continuous_data_loader_set = data_loader_set_function(True)
         for model_name in tqdm(models_config):
-            model_train_val_pts = train_val_pts if "CIDA" not in model_name else continuous_train_val_pts
-            model_test_pts = test_pts if "CIDA" not in model_name else continuous_test_pts
-            source_test_loader, target_test_loader = get_source_target_loaders_from_points(model_test_pts)
+            data_loader_set = continuous_data_loader_set if is_model_continuous(model_name) else discrete_data_loader_set
             run_func = models_config[model_name]["run_func"]
             args = models_config[model_name].get("args")
             kwargs = models_config[model_name]["kwargs"]
-            model = run_func(model_train_val_pts, **kwargs) if args is None else run_func(model_train_val_pts, *args, **kwargs)
+            model = run_func(data_loader_set, model_kwargs=model_kwargs, **kwargs) if args is None else \
+                    run_func(data_loader_set, *args, model_kwargs=model_kwargs, **kwargs)
 
             
             model_metrics = models_config[model_name]["metrics"]
-            update_model_metrics_lists(model_metrics, model, source_test_loader, target_test_loader, task="binary")
+            source_test_loader, target_test_loader = data_loader_set.get_test_loaders()
+            update_model_metrics_lists(model_metrics, model, source_test_loader, target_test_loader, **metrics_kwargs)
             if i == len(COMPARISON_SEEDS) - 1: # last pass
                 udpate_model_metrics_mean_std(model_metrics)
 
@@ -264,7 +273,8 @@ def main(args) -> None:
     if args["-h"]: 
         print_help_and_exit()
     if args["--comparison"]:
-        make_table_comparison()
+        exp  = "moons" if args["--moons"] else "skin-cancer"
+        make_table_comparison(exp)
         sys.exit(0)
 
     formatted_model_name = args["--model"].lower() if args["--model"] is not None else None
