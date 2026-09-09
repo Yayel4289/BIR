@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import DataLoader
 import numpy as np
 
+from src.data.data_loader_set import DataLoaderSet
 from src.data.data_loader import get_source_target_train_val_test_loaders_from_tensor, tensor_train_val_test_split
 
 LABELS_TYPE = CategoricalDtype(categories=["akiec", "bcc", "bkl", "df", "nv", "vasc", "mel"], ordered=False)
@@ -59,7 +60,7 @@ def get_X_y_tensors_from_df(df: pd.DataFrame) -> Tuple[torch.Tensor, torch.Tenso
     y = torch.from_numpy(df[["label", "age"]].values.astype("float32")) # label, domain
     return X, y
 
-def get_train_val_test_loaders(continuous_domain: bool = True) -> Tuple[DataLoader, DataLoader, DataLoader, DataLoader, DataLoader, DataLoader]:
+def get_skin_cancer_data_loader_set(continuous_domain: bool = True) -> DataLoaderSet:
     df = pd.read_csv(DATA_PATH + "hmnist_age_label.csv")
     df = normalize_df(df)
     df_source, df_target = split_source_target(df)
@@ -71,5 +72,5 @@ def get_train_val_test_loaders(continuous_domain: bool = True) -> Tuple[DataLoad
         X_source_tensor, y_source_tensor,
         X_target_tensor, y_target_tensor
     )
-    return source_train_loader, target_train_loader, source_val_loader, target_val_loader, source_test_loader, target_test_loader
+    return DataLoaderSet(source_train_loader, target_train_loader, source_val_loader, target_val_loader, source_test_loader, target_test_loader)
 

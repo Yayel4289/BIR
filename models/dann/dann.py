@@ -5,44 +5,13 @@ from models.abstract_model import AbstractModel
 from models.dann.gradient_reversal_layer import GradientReversalLayer
 
 class DANN(AbstractModel):
-    def __init__(self, input_dim: int, output_dim: int, hidden_dim: int=32, domain_output_dim: int = 1, convolutional: bool = False) -> None:
+    def __init__(self, input_dim: int = 2, output_dim: int = 2, hidden_dim: int=32, convolutional: bool = False, _domain_output_dim: int = 1) -> None:
         # output_dim = L
-        super().__init__()
-        half_hidden_dim = hidden_dim // 2
-        if not convolutional:
-            self.feature_extractor = nn.Sequential(
-                nn.Linear(input_dim, half_hidden_dim),
-                nn.ReLU(),
-                nn.Linear(half_hidden_dim, hidden_dim),
-                nn.ReLU(),
-                nn.Linear(hidden_dim, hidden_dim),
-                nn.ReLU()
-            ) 
-        else:
-            self.feature_extractor = nn.Sequential(
-                nn.Conv2d(3, half_hidden_dim, kernel_size=3, padding=1),
-                nn.ReLU(),
-                nn.MaxPool2d(2), # W,H /= 2
-
-                nn.Conv2d(half_hidden_dim, hidden_dim, kernel_size=3, padding=1),
-                nn.ReLU(),
-                nn.MaxPool2d(2), #W,H /= 2
-
-                nn.Conv2d(hidden_dim, hidden_dim, kernel_size=3, padding=1),
-                nn.ReLU(),
-
-                nn.AdaptiveAvgPool2d(1),
-                nn.Flatten()
-            )
-        self.label_predictor = nn.Sequential(
-            nn.Linear(hidden_dim, half_hidden_dim),
-            nn.ReLU(),
-            nn.Linear(half_hidden_dim, output_dim)
-        )
+        super().__init__(input_dim, output_dim, hidden_dim, convolutional)
         self.domain_classifier = nn.Sequential(
-            nn.Linear(hidden_dim, half_hidden_dim),
+            nn.Linear(hidden_dim, hidden_dim // 2),
             nn.ReLU(),
-            nn.Linear(half_hidden_dim, domain_output_dim)
+            nn.Linear(hidden_dim // 2, _domain_output_dim)
         )
 
     def forward(self, X: torch.Tensor, grl_lambda: float, only_domain=False) -> Tuple[torch.Tensor, torch.Tensor]:

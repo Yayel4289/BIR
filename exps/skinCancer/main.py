@@ -1,7 +1,7 @@
 import pandas as pd
 from torch import nn
 
-from exps.skinCancer.data_loader import get_X_y_tensors_from_df, get_train_val_test_loaders
+from exps.skinCancer.data_loader import get_X_y_tensors_from_df, get_skin_cancer_train_val_test_loaders
 from models.baseline.classifier import Classifier
 from models.dann.dann import DANN
 from src.metrics.metrics import compute_model_f1_score_from_loader, compute_model_h_divergence
@@ -12,7 +12,7 @@ from src.training.lambda_config.progressive_lambda_config import ProgressiveLamb
 from src.training.trainers.dann_trainer import DANN_Trainer
 from src.training.trainers.baseline_trainer import BaselineTrainer
 
-source_train_loader, target_train_loader, source_val_loader, target_val_loader, source_test_loader, target_test_loader = get_train_val_test_loaders()
+source_train_loader, target_train_loader, source_val_loader, target_val_loader, source_test_loader, target_test_loader = get_skin_cancer_train_val_test_loaders(continuous_domain=False)
 
 model = DANN(input_dim=None, output_dim=7, convolutional=True)
 trainer = DANN_Trainer(
