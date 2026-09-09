@@ -67,7 +67,6 @@ def get_train_val_test_loaders(continuous_domain: bool = True) -> Tuple[DataLoad
         df_source, df_target = make_domain_discrete(df_source, df_target)
     X_source_tensor, y_source_tensor = get_X_y_tensors_from_df(df_source)
     X_target_tensor, y_target_tensor = get_X_y_tensors_from_df(df_target)
-    print(X_source_tensor, y_source_tensor, X_target_tensor, y_target_tensor, sep="\n")
     source_train_loader, target_train_loader, source_val_loader, target_val_loader, source_test_loader, target_test_loader = get_source_target_train_val_test_loaders_from_tensor(
         X_source_tensor, y_source_tensor,
         X_target_tensor, y_target_tensor
