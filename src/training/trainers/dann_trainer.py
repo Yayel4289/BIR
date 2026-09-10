@@ -60,11 +60,12 @@ class DANN_Trainer(BaselineTrainer):
             source_label_loss = self.label_loss_function(source_labels_pred, source_train_batch_labels)
             source_domain_loss = self.domain_loss_function(source_domains_pred, source_train_batch_domains)
             target_domain_loss = self.domain_loss_function(target_domains_pred, target_train_batch_domains)
-            domain_loss = source_domain_loss + target_domain_loss
+            domain_loss = (source_domain_loss + target_domain_loss) / 2
             total_loss = source_label_loss + domain_loss
 
             self.optimizer.zero_grad()
             total_loss.backward()
+            #torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
             self.optimizer.step()
             
             epoch_source_label_loss += source_label_loss.item()
@@ -98,7 +99,7 @@ class DANN_Trainer(BaselineTrainer):
                 source_label_loss = self.label_loss_function(source_labels_pred, source_val_batch_labels)
                 source_domain_loss = self.domain_loss_function(source_domains_pred, source_val_batch_domains)
                 target_domain_loss = self.domain_loss_function(target_domains_pred, target_val_batch_domains)
-                domain_loss = source_domain_loss + target_domain_loss
+                domain_loss = (source_domain_loss + target_domain_loss) / 2
                 val_source_label_loss += source_label_loss.item()
                 val_domain_loss -= domain_loss.item()
                 
@@ -113,15 +114,11 @@ class DANN_Trainer(BaselineTrainer):
             self.lambda_config.update_grl_lambda(epoch=self.epoch, epochs=self.epochs)
             source_label_loss, domain_loss, source_domain_loss, target_domain_loss = self._train_epoch()
             val_source_label_loss, val_domain_loss = self._evaluate_epoch()
-            print(f"Epoch {self.epoch+1}/{self.epochs} ║ Val Label Loss: {source_label_loss:.3f} ║ Val Domain Loss: {domain_loss:.3f}", flush=True)
-            if self.epoch % 5 == 0:
-                self.logger(f"Val Label Loss: {val_source_label_loss:.3f}", f"Val Domain Loss: {val_domain_loss:.3f}", sep=" ║ ")
+            print(f"Epoch {self.epoch+1}/{self.epochs} ║ Val Label Loss: {val_source_label_loss:.3f} ║ Val Domain Loss: {val_domain_loss:.3f}", flush=True)
             self.model_saver.update(self.model, val_source_label_loss, self.epoch)
             if self.model_saver.should_stop_training():
                 self.logger(f"Early stopping at epoch {self.epoch}")
                 break
 
-            if self.epoch == 20:
-                break
-
         self.model.load_state_dict(self.model_saver.get_best_model_state_dict())
+

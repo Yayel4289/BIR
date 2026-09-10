@@ -74,8 +74,6 @@ class BaselineTrainer:
             train_loss = self._train_epoch()
             val_loss = self._evaluate_epoch()
             print(f"Epoch {self.epoch+1}/{self.epochs} ║ Train Loss: {train_loss:.3f} ║ Val Loss: {val_loss:.3f}", flush=True)
-            if self.epoch % 5 == 0:
-                self.logger(f"Train Loss: {train_loss:.3f}", f"Val Loss: {val_loss:.3f}", sep=" ║ ")
             self.model_saver.update(self.model, val_loss, self.epoch)
             if self.model_saver.should_stop_training():
                 self.logger(f"Early stopping at epoch {self.epoch}")

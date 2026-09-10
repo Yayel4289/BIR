@@ -4,7 +4,6 @@ from pandas.api.types import CategoricalDtype
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
-from sklearn.utils import shuffle
 
 from src.data.data_loader_set import DataLoaderSet
 from src.data.data_loader import get_source_target_train_val_test_loaders_from_tensor, tensor_train_val_test_split

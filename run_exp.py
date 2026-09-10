@@ -66,7 +66,7 @@ from typing import Type, Dict, List, Tuple
 import sklearn
 
 DEFAULT_SEED = 42
-COMPARISON_SEEDS = [DEFAULT_SEED] #, 89, 0, 4289, 8942]
+COMPARISON_SEEDS = [DEFAULT_SEED, 89, 0, 4289, 8942]
 
 def get_trainer_model_from_model_name(formatted_model_name: str) -> Tuple[Type[DANN], Type[DANN_Trainer]]:
     acronym = formatted_model_name.upper()
@@ -76,7 +76,7 @@ def is_model_continuous(formatted_model_name: str) -> bool:
     cida = "cida"
     return cida in formatted_model_name or cida.upper() in formatted_model_name
 
-def run_baseline(data_loader_set: DataLoaderSet, plot: bool = True, verbose: bool = True, device: torch.device = None, loss_kwargs: Dict = None, model_kwargs: Dict = None, f1_kwargs: Dict = None) -> Classifier:
+def run_baseline(data_loader_set: DataLoaderSet, plot: bool = True, verbose: bool = True, device: torch.device = None, loss_kwargs: Dict = {}, model_kwargs: Dict = {}) -> Classifier:
     source_train_loader, source_val_loader, source_test_loader, _, _, target_test_loader = data_loader_set
 
     baseline = Classifier(device=device, **model_kwargs)
@@ -90,15 +90,15 @@ def run_baseline(data_loader_set: DataLoaderSet, plot: bool = True, verbose: boo
     )
     baseline_trainer.train_model()
     if verbose:
-        source_f1_score = compute_model_f1_score_from_loader(baseline, source_test_loader, device=device, **f1_kwargs)
-        target_f1_score = compute_model_f1_score_from_loader(baseline, target_test_loader, device=device, **f1_kwargs)
+        source_f1_score = compute_model_f1_score_from_loader(baseline, source_test_loader, device=device)
+        target_f1_score = compute_model_f1_score_from_loader(baseline, target_test_loader, device=device)
         print("Source F1 Score:", source_f1_score)
         print("Target F1 Score:", target_f1_score)
     if plot and data_loader_set.has_test_pts():
         plot_model(data_loader_set.get_test_pts(), baseline)
     return baseline
 
-def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: str, mode: str, hyperparam_selection: bool, plot: bool = True, verbose: bool = True, device: torch.device = None, model_kwargs: Dict = {}, loss_kwargs: Dict = {}, f1_kwargs: Dict = {}) -> DANN:
+def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: str, mode: str, hyperparam_selection: bool, plot: bool = True, verbose: bool = True, device: torch.device = None, model_kwargs: Dict = {}, loss_kwargs: Dict = {}) -> DANN:
     source_train_loader, source_val_loader, source_test_loader, target_train_loader, target_val_loader, target_test_loader = data_loader_set
     ModelCass, TrainerClass = get_trainer_model_from_model_name(formatted_model_name)
     
@@ -127,7 +127,7 @@ def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: 
             )
             kwargs = {"lambda_config": ProgressiveLambdaConfig(max_grl_lambda, gamma)}
     else:
-        kwargs = {"lambda_config": ProgressiveLambdaConfig(1, 10) if mode == "progressive" else FixedLambdaConfig(5)}
+        kwargs = {"lambda_config": ProgressiveLambdaConfig(1, 10) if mode == "progressive" else FixedLambdaConfig(1)}
 
     model = ModelCass(device=device, **model_kwargs)
     trainer = TrainerClass(
@@ -141,8 +141,8 @@ def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: 
     trainer.train_model()
     
     if verbose:
-        source_f1_score = compute_model_f1_score_from_loader(model, source_test_loader, device=device, **f1_kwargs)
-        target_f1_score = compute_model_f1_score_from_loader(model, target_test_loader, device=device, **f1_kwargs)
+        source_f1_score = compute_model_f1_score_from_loader(model, source_test_loader, device=device)
+        target_f1_score = compute_model_f1_score_from_loader(model, target_test_loader, device=device)
         h_divergence = compute_model_h_divergence(model, source_test_loader, target_test_loader, device=device)
         print("Source F1 Score:", source_f1_score)
         print("Target F1 Score:", target_f1_score)
@@ -152,16 +152,13 @@ def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: 
     return model
 
 
-def make_table_comparison(exp: str, device: torch.device, formatted_model_name: str = None, mode_name: str = None, table: bool = True) -> None:
-    model_kwargs = {}
-    loss_kwargs = {}
+def make_table_comparison(exp: str, device: torch.device, formatted_model_name: str = None, mode_name: str = None, table: bool = True, model_kwargs: Dict = {}, loss_kwargs: Dict = {}) -> None:
     data_loader_set_function: Callable[bool, DataLoaderSet]
     if exp == "moons":
         data_loader_set_function = get_moons_data_loader_set
     elif exp == "skin-cancer":
-        model_kwargs = {"input_dim": 3, "convolutional": True}
-        loss_kwargs = {"weight": torch.Tensor([1, 6])} # benign / cancer proportions
         data_loader_set_function = get_skin_cancer_data_loader_set
+
     models_config =  {
         "Baseline": {
             "run_func": run_baseline,
@@ -276,7 +273,6 @@ def print_help_and_exit(optional_msg=""):
 def setup_seed(seed: int = DEFAULT_SEED) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
-    sklearn.utils.check_random_state(seed)
 
 def validate_model_params(formatted_model_name: str, mode_name: str, hyperparam_selection: bool) -> bool: # True if model mode, else False
     if formatted_model_name is None:
@@ -308,25 +304,26 @@ def main(args) -> None:
         points = generate_intertwinning_moons(continuous=args["--continuous"])
         plot_pts_only(points)
     elif model_mode:
+        model_kwargs = {}
+        loss_kwargs = {}
+        if exp == "skin-cancer":
+            model_kwargs = {"input_dim": 3, "convolutional": True}
+            loss_kwargs = {"weight": torch.Tensor([1, 6])} # benign / cancer inverse proportions
+
         if args["--comparison"]:
-            make_table_comparison(exp, device, formatted_model_name=formatted_model_name, mode_name=mode_name, table=False)
+            make_table_comparison(exp, device, formatted_model_name=formatted_model_name, mode_name=mode_name, model_kwargs=model_kwargs, loss_kwargs=loss_kwargs, table=False)
             sys.exit(0)
         continuous = is_model_continuous(formatted_model_name)
         data_loader_set: DataLoaderSet
-        model_kwargs = {}
-        f1_kwargs = {}
         if args["--moons"]:
             data_loader_set = get_moons_data_loader_set(continuous=continuous)
-            f1_kwargs = {"task": "binary"}
         elif args["--skin-cancer"]:
-            data_loader_set = get_skin_cancer_data_loader_set(continuous_domain=continuous)
-            model_kwargs = {"input_dim": 3, "output_dim": 7, "convolutional": True}
-            f1_kwargs = {"task": "multiclass", "num_classes": 7}
+            data_loader_set = get_skin_cancer_data_loader_set(continuous=continuous)
 
         if formatted_model_name == "baseline":
-            run_baseline(data_loader_set, device=device, model_kwargs=model_kwargs, f1_kwargs=f1_kwargs)
+            run_baseline(data_loader_set, device=device, model_kwargs=model_kwargs, loss_kwargs=loss_kwargs)
         else:
-            run_adversarial_model(data_loader_set, formatted_model_name, mode_name, hyperparam_selection, device=device, model_kwargs=model_kwargs, f1_kwargs=f1_kwargs)
+            run_adversarial_model(data_loader_set, formatted_model_name, mode_name, hyperparam_selection, device=device, model_kwargs=model_kwargs, loss_kwargs=loss_kwargs)
     elif args["--comparison"]:
         make_table_comparison(exp, device)
         sys.exit(0)
