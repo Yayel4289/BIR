@@ -73,6 +73,15 @@ def udpate_model_metrics_mean_std(model_metrics):
         model_metrics[metric]["mean"] = np.mean(model_metrics[metric]["list"])
         model_metrics[metric]["std"] = np.std(model_metrics[metric]["list"])
 
+def get_model_metrics(models_config) -> str:
+    res = ""
+    for model_name in models_config: # only one
+        res += model_name + ":\n"
+        for metric_name, metric_details in models_config[model_name]["metrics"].items():
+            mean, std = metric_details["mean"], metric_details["std"]
+            res += f"{metric_name}: {mean:.3f} ± {std:.3f}\n"
+    return res
+
 def get_table_string(models_config):
     name_space = len(max(models_config.keys(), key=len))
     rows = len(models_config)

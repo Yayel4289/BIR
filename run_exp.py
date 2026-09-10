@@ -2,7 +2,8 @@
 Usage:
     run_exp -h
     run_exp --moons --plot-only [--continuous]
-    run_exp (--moons | --skin-cancer) (--comparison | --model <model_name> [--mode <mode_name> [--hyperparam-selection]])
+    run_exp (--moons | --skin-cancer) --model <model_name> [--mode <mode_name> [--hyperparam-selection]]
+    run_exp (--moons | --skin-cancer) --comparison [--model <model_name> [--mode <mode_name>]]
 
 Options:
     -h                                          Show this help.
@@ -49,7 +50,7 @@ from exps.points_classification.utils.point import Point
 from models.abstract_model import AbstractModel
 from models.cida.cida import CIDA
 from models.cida.pcida import PCIDA
-from src.metrics.metrics import compute_model_f1_score_from_loader, compute_model_h_divergence, compute_model_source_f1_score, compute_model_target_f1_score, get_table_string, has_model_h_divergence, make_metrics_dict, udpate_model_metrics_mean_std, update_model_metrics_lists
+from src.metrics.metrics import compute_model_f1_score_from_loader, compute_model_h_divergence, compute_model_source_f1_score, compute_model_target_f1_score, get_model_metrics, get_table_string, has_model_h_divergence, make_metrics_dict, udpate_model_metrics_mean_std, update_model_metrics_lists
 from models.baseline.classifier import Classifier
 from models.dann.dann import DANN
 import src.visualization.plots as plots
@@ -145,7 +146,7 @@ def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: 
     return model
 
 
-def make_table_comparison(exp: str, device: torch.device) -> None:
+def make_table_comparison(exp: str, device: torch.device, formatted_model_name: str = None, mode_name: str = None, table: bool = True) -> None:
     model_kwargs = {}
     metrics_kwargs = {}
     data_loader_set_function: Callable[bool, DataLoaderSet]
@@ -220,11 +221,19 @@ def make_table_comparison(exp: str, device: torch.device) -> None:
             }
         }
     }
-    for i, seed in tqdm(enumerate(COMPARISON_SEEDS)):
+
+    if formatted_model_name is not None:
+        if mode_name is None:
+            models_config = {"Baseline": models_config["Baseline"]}
+        else:
+            key = formatted_model_name.upper() + " " + mode_name.capitalize() + " λ"
+            models_config = {key: models_config[key]}
+
+    for i, seed in enumerate(tqdm(COMPARISON_SEEDS)):
         setup_seed(seed)
-        discrete_data_loader_set = data_loader_set_function(False)
-        continuous_data_loader_set = data_loader_set_function(True)
-        for model_name in tqdm(models_config):
+        discrete_data_loader_set = data_loader_set_function(continuous=False)
+        continuous_data_loader_set = data_loader_set_function(continuous=True)
+        for model_name in models_config:
             data_loader_set = continuous_data_loader_set if is_model_continuous(model_name) else discrete_data_loader_set
             run_func = models_config[model_name]["run_func"]
             args = models_config[model_name].get("args")
@@ -239,7 +248,10 @@ def make_table_comparison(exp: str, device: torch.device) -> None:
             if i == len(COMPARISON_SEEDS) - 1: # last pass
                 udpate_model_metrics_mean_std(model_metrics)
 
-    print(get_table_string(models_config))
+    if table:
+        print(get_table_string(models_config))
+    else:
+        print(get_model_metrics(models_config))
 
  
 def plot_model(points: List[Point], model: nn.Module):
@@ -278,15 +290,12 @@ def main(args) -> None:
         print_help_and_exit()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if args["--comparison"]:
-        exp  = "moons" if args["--moons"] else "skin-cancer"
-        make_table_comparison(exp, device)
-        sys.exit(0)
 
     formatted_model_name = args["--model"].lower() if args["--model"] is not None else None
     mode_name = args["--mode"].lower() if args["--mode"] is not None else None
     hyperparam_selection = args["--hyperparam-selection"]
     model_mode = validate_model_params(formatted_model_name, mode_name, hyperparam_selection)
+    exp = "moons" if args["--moons"] else "skin-cancer"
 
     setup_seed()
 
@@ -294,6 +303,9 @@ def main(args) -> None:
         points = generate_intertwinning_moons(continuous=args["--continuous"])
         plot_pts_only(points)
     elif model_mode:
+        if args["--comparison"]:
+            make_table_comparison(exp, device, formatted_model_name=formatted_model_name, mode_name=mode_name, table=False)
+            sys.exit(0)
         continuous = is_model_continuous(formatted_model_name)
         data_loader_set: DataLoaderSet
         model_kwargs = {}
@@ -310,6 +322,9 @@ def main(args) -> None:
             run_baseline(data_loader_set, device=device, model_kwargs=model_kwargs, f1_kwargs=f1_kwargs)
         else:
             run_adversarial_model(data_loader_set, formatted_model_name, mode_name, hyperparam_selection, device=device, model_kwargs=model_kwargs, f1_kwargs=f1_kwargs)
+    elif args["--comparison"]:
+        make_table_comparison(exp, device)
+        sys.exit(0)
     else:
         print_help_and_exit()
 

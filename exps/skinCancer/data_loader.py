@@ -60,11 +60,11 @@ def get_X_y_tensors_from_df(df: pd.DataFrame) -> Tuple[torch.Tensor, torch.Tenso
     y = torch.from_numpy(df[["label", "age"]].values.astype("float32")) # label, domain
     return X, y
 
-def get_skin_cancer_data_loader_set(continuous_domain: bool = True) -> DataLoaderSet:
+def get_skin_cancer_data_loader_set(continuous: bool = True) -> DataLoaderSet:
     df = pd.read_csv(DATA_PATH + "hmnist_age_label.csv")
     df = normalize_df(df)
     df_source, df_target = split_source_target(df)
-    if not continuous_domain:
+    if not continuous:
         df_source, df_target = make_domain_discrete(df_source, df_target)
     X_source_tensor, y_source_tensor = get_X_y_tensors_from_df(df_source)
     X_target_tensor, y_target_tensor = get_X_y_tensors_from_df(df_target)
