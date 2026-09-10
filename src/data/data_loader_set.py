@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from torch.utils.data import DataLoader
 
 from exps.points_classification.utils.point import Point
