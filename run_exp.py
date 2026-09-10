@@ -61,6 +61,7 @@ from src.training.lambda_config.progressive_lambda_config import ProgressiveLamb
 from src.training.lambda_config.fixed_lambda_config import FixedLambdaConfig
 from src.training.trainers.cida_trainer import CIDA_Trainer
 from src.training.trainers.pcida_trainer import PCIDA_Trainer
+from typing import Type, Dict, List, Tuple
 
 DEFAULT_SEED = 42
 COMPARISON_SEEDS = [DEFAULT_SEED, 89, 0, 4289, 8942]
@@ -249,9 +250,9 @@ def make_table_comparison(exp: str, device: torch.device, formatted_model_name: 
                 udpate_model_metrics_mean_std(model_metrics)
 
     if table:
-        print(get_table_string(models_config))
+        print(get_table_string(models_config), flush=True)
     else:
-        print(get_model_metrics(models_config))
+        print(get_model_metrics(models_config), flush=True)
 
  
 def plot_model(points: List[Point], model: nn.Module):
