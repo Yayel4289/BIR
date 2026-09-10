@@ -1,0 +1,54 @@
+----------------- Environment ------------------
+The following modules were not unloaded:
+  (Use "module --force purge" to unload all):
+
+  1) EasyBuild/2022a
+------------------- Job info -------------------
+job_id             : 15607124
+jobname            : moons_baseline.job
+queue              : debug-gpu
+qos                : debug-gpu
+account            : maiaone
+submit dir         : /gpfs/home/acad/umons-artint/yoest/BIR/slurm/jobs
+number of mpi tasks: 1 tasks
+OMP_NUM_THREADS    : 
+number of gpus     : 1
+Executable         : 
+------------------- Node list ------------------
+cna050
+---------------- Checking limits ---------------
+core file size          (blocks, -c) 0
+data seg size           (kbytes, -d) unlimited
+scheduling priority             (-e) 0
+file size               (blocks, -f) unlimited
+pending signals                 (-i) 1028129
+max locked memory       (kbytes, -l) unlimited
+max memory size         (kbytes, -m) 8388608
+open files                      (-n) 32768
+pipe size            (512 bytes, -p) 8
+POSIX message queues     (bytes, -q) 819200
+real-time priority              (-r) 0
+stack size              (kbytes, -s) 8192
+cpu time               (seconds, -t) unlimited
+max user processes              (-u) 1028129
+virtual memory          (kbytes, -v) unlimited
+file locks                      (-x) unlimited
+--------------- Running the code ---------------
+This run started on: Thu Sep 10 11:10:33 CEST 2026
+/gpfs/home/acad/umons-artint/yoest/birvenv/lib/python3.10/site-packages/torch/cuda/__init__.py:188: UserWarning: CUDA initialization: The NVIDIA driver on your system is too old (found version 12080). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver. (Triggered internally at /__w/pytorch/pytorch/c10/cuda/CUDAFunctions.cpp:119.)
+  return torch._C._cuda_getDeviceCount() > 0
+  0%|          | 0/5 [00:00<?, ?it/s] 20%|██        | 1/5 [02:51<11:24, 171.09s/it] 40%|████      | 2/5 [05:35<08:22, 167.45s/it][2026-09-10T11:19:17.455] error: *** JOB 15607124 ON cna050 CANCELLED AT 2026-09-10T11:19:17 DUE to SIGNAL Terminated ***
+
+Resources Used
+
+Total Memory used                        - MEM              : 455MiB
+Total CPU Time                           - CPU_Time         : 01:09:52
+Execution Time                           - Wall_Time        : 00:08:44
+total programme cpu time                 - Total_CPU        : 01:09:15
+Total_CPU / CPU_Time  (%)                - ETA              : 99%
+Number of alloc CPU                      - NCPUS            : 8
+Number of Mobilized Resources per Job    - NCPUS_EQUIV_PJOB : 8
+Mobilized Resources x Execution Time     - R_Wall_Time      : 01:09:52
+CPU_Time / R_Wall_Time (%)               - ALPHA            : 100%
+Energy (Joules)                                             : unknown
+

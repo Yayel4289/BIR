@@ -97,16 +97,16 @@ f"""
         string += f"│ {model_name:<{name_space}} │"
         for col_count, metric_details in enumerate(models_config[model_name]["metrics"].values()):
             mean, std = metric_details["mean"], metric_details["std"]
-            string += f" {f"{mean:.3f} ± {std:.3f}":<{cols_name_space}} │"
+            string += f" {mean:.3f} ± {std:.3f}".ljust(cols_name_space + 1) + "│"
         for _ in range(cols - col_count - 1):
-            string += f" {"/":<{cols_name_space}} │"
+            string += f" {'/':<{cols_name_space}} │"
         string += "\n"
 
         is_not_end = row_count < rows - 1
         if is_not_end:
-            string += f"├─{"─"*name_space}─┼─{"─"*cols_name_space}─┼─{"─"*cols_name_space}─┼─{"─"*cols_name_space}─┤\n"
+            string += f"├─{'─' * name_space}─┼─{'─' * cols_name_space}─┼─{'─' * cols_name_space}─┼─{'─' * cols_name_space}─┤\n"
         else:
-            string += f"└─{"─"*name_space}─┴─{"─"*cols_name_space}─┴─{"─"*cols_name_space}─┴─{"─"*cols_name_space}─┘"
+            string += f"└─{'─' * name_space}─┴─{'─' * cols_name_space}─┴─{'─' * cols_name_space}─┴─{'─' * cols_name_space}─┘"
     
     return string
             

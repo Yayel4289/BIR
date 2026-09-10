@@ -2,7 +2,7 @@ from typing import List
 import matplotlib
 
 from models.abstract_model import AbstractModel
-matplotlib.use("TkAgg")
+# matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 import torch

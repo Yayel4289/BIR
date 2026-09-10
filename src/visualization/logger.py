@@ -1,3 +1,6 @@
+from typing import Any
+
+
 class Logger:
     def __init__(self, verbose: bool) -> None:
         self.verbose = verbose
