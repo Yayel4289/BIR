@@ -10,7 +10,7 @@ from models.dann.dann import DANN
 from src.utils.utils import to_device
 
 # Eq. n°1 from DANN paper
-def compute_model_h_divergence(model: DANN, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
+def compute_model_h_divergence(model: DANN, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device = None) -> float:
     n = len(source_test_loader.dataset)
     n_prime = len(target_test_loader.dataset)
     correct_source = 0
@@ -29,15 +29,15 @@ def compute_model_h_divergence(model: DANN, source_test_loader: DataLoader, targ
     h_divergence = 2 * (1 - accuracy)
     return h_divergence
 
-def compute_model_source_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
-    return compute_model_f1_score_from_loader(model, source_test_loader, device=device, **kwargs)
+def compute_model_source_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device = None) -> float:
+    return compute_model_f1_score_from_loader(model, source_test_loader, device=device)
 
-def compute_model_target_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
-    return compute_model_f1_score_from_loader(model, target_test_loader, device=device, **kwargs)
+def compute_model_target_f1_score(model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device = None) -> float:
+    return compute_model_f1_score_from_loader(model, target_test_loader, device=device)
 
-def compute_model_f1_score_from_loader(model: AbstractModel, test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
+def compute_model_f1_score_from_loader(model: AbstractModel, test_loader: DataLoader, device: torch.device = None) -> float:
     model.eval()
-    f1 = F1Score(average="macro", **kwargs) # 'binary' or 'multiclass' + num_classes if necessary
+    f1 = F1Score(task="binary", average="macro")
     with torch.inference_mode():
         for (X_test_batch, y_test_batch) in test_loader:
             X_test_batch, y_test_batch = to_device(device, X_test_batch, y_test_batch)
@@ -63,9 +63,9 @@ def make_metrics_dict(h_divergence: bool=True):
 def has_model_h_divergence(models_config, model_name):
     return models_config[model_name]["metrics"].get("h_divergences") is not None
 
-def update_model_metrics_lists(model_metrics, model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device, **kwargs):
+def update_model_metrics_lists(model_metrics, model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device):
     for metric in model_metrics:
-        computed_metric = model_metrics[metric]["function"](model, source_test_loader, target_test_loader, device=device, **kwargs)
+        computed_metric = model_metrics[metric]["function"](model, source_test_loader, target_test_loader, device=device)
         model_metrics[metric]["list"].append(computed_metric)
 
 def udpate_model_metrics_mean_std(model_metrics):

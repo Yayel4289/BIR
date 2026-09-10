@@ -21,17 +21,18 @@ class DANN_Trainer(BaselineTrainer):
             epochs: int = 1000, 
             lr: float = 0.01,
             verbose: bool = True,
-            device: torch.device = None
+            device: torch.device = None,
+            loss_kwargs: Dict = {}
     ) -> None:
-        super().__init__(model, source_train_loader, source_val_loader, self._define_label_loss_func(), epochs=epochs, lr=lr, verbose=verbose, device=device)
+        super().__init__(model, source_train_loader, source_val_loader, self._define_label_loss_func(**loss_kwargs), epochs=epochs, lr=lr, verbose=verbose, device=device)
         self.target_train_loader = target_train_loader
         self.target_val_loader = target_val_loader
         self.domain_loss_function = self._define_domain_loss_func()
         self.lambda_config = lambda_config
         self.model_saver = ModelSaver(early_stopping_enabled=not self.lambda_config.is_progressive())
 
-    def _define_label_loss_func(self) -> Callable[torch.Tensor, torch.Tensor]:
-        return nn.CrossEntropyLoss()
+    def _define_label_loss_func(self, **loss_kwargs) -> Callable[torch.Tensor, torch.Tensor]:
+        return nn.CrossEntropyLoss(**loss_kwargs)
     
     def _define_domain_loss_func(self) -> Callable[torch.Tensor, torch.Tensor]:
         return nn.BCEWithLogitsLoss()

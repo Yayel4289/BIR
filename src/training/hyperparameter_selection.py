@@ -24,7 +24,8 @@ def select_model_progressive_hyperparams(
         max_max_grl_lambda: int=15,
         verbose: bool=False,
         device: torch.device = None,
-        **model_kwargs
+        model_kwargs: Dict = {},
+        loss_kwargs: Dict = {}
         ) -> Tuple[float, float]:
     def objective(trial: optuna.Trial) -> float:
         gamma = trial.suggest_int("gamma", min_gamma, max_gamma)
@@ -39,6 +40,7 @@ def select_model_progressive_hyperparams(
             target_val_loader,
             lambda_config=ProgressiveLambdaConfig(max_grl_lambda, gamma),
             device=device,
+            loss_kwargs=loss_kwargs,
             verbose=verbose
         )
         trainer.train_model()
@@ -70,7 +72,8 @@ def select_model_fixed_grl_lambda(
         max_grl_lambda: float = 10,
         verbose: bool=False,
         device: torch.device = None,
-        **model_kwargs
+        model_kwargs: Dict = {},
+        loss_kwargs: Dict = {}
         ) -> float:
     def objective(trial: optuna.Trial) -> float:
         grl_lambda = trial.suggest_float("grl_lambda", min_grl_lambda, max_grl_lambda)
@@ -84,6 +87,7 @@ def select_model_fixed_grl_lambda(
             target_val_loader,
             lambda_config=FixedLambdaConfig(grl_lambda),
             device=device,
+            loss_kwargs=loss_kwargs,
             verbose=verbose
         )
         trainer.train_model()

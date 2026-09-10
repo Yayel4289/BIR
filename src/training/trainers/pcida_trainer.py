@@ -20,7 +20,8 @@ class PCIDA_Trainer(CIDA_Trainer):
             epochs: int = 1000, 
             lr: float = 0.01, 
             verbose: bool = True,
-            device: torch.device = None
+            device: torch.device = None,
+            loss_kwargs: Dict = {}
     ) -> None:
         super().__init__(
             model, 
@@ -28,7 +29,8 @@ class PCIDA_Trainer(CIDA_Trainer):
             epochs, 
             lr, 
             verbose,
-            device=device
+            device=device,
+            loss_kwargs=loss_kwargs
         )
 
     def _define_domain_loss_func(self) -> Callable[torch.Tensor, torch.Tensor]:

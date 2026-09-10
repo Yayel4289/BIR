@@ -8,7 +8,6 @@ import numpy as np
 from src.data.data_loader_set import DataLoaderSet
 from src.data.data_loader import get_source_target_train_val_test_loaders_from_tensor, tensor_train_val_test_split
 
-LABELS_TYPE = CategoricalDtype(categories=["akiec", "bcc", "bkl", "df", "nv", "vasc", "mel"], ordered=False)
 SOURCE_TARGET_AGE_SPLIT = 30
 DATA_PATH = "exps/skinCancer/data/"
 
@@ -33,6 +32,12 @@ def fuse_hmnist_HAMmeta() -> None:
 
     hmnist_metadata.to_csv(DATA_PATH + "hmnist_age_label.csv", index=False)
 
+
+def filter_df_classes(df: pd.DataFrame) -> pd.DataFrame: # 4 : nv, 6 : mel
+    df = df[(df["label"] == 4) | (df["label"] == 6)]
+    df.loc[df["label"] == 4, "label"] = 0 # benign
+    df.loc[df["label"] == 6, "label"] = 1 # cancer
+    return df
 
 def normalize_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop(columns=["age", "label"]).div(MAX_COLOR).join(df[["age", "label"]])
@@ -62,6 +67,7 @@ def get_X_y_tensors_from_df(df: pd.DataFrame) -> Tuple[torch.Tensor, torch.Tenso
 
 def get_skin_cancer_data_loader_set(continuous: bool = True) -> DataLoaderSet:
     df = pd.read_csv(DATA_PATH + "hmnist_age_label.csv")
+    df = filter_df_classes(df)
     df = normalize_df(df)
     df_source, df_target = split_source_target(df)
     if not continuous:
