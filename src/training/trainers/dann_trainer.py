@@ -110,8 +110,8 @@ class DANN_Trainer(BaselineTrainer):
         for self.epoch in range(self.epochs):
             self.lambda_config.update_grl_lambda(epoch=self.epoch, epochs=self.epochs)
             source_label_loss, domain_loss, source_domain_loss, target_domain_loss = self._train_epoch()
+            val_source_label_loss, val_domain_loss = self._evaluate_epoch()
             if self.epoch % 5 == 0:
-                val_source_label_loss, val_domain_loss = self._evaluate_epoch()
                 self.logger(f"Val Label Loss: {val_source_label_loss:.3f}", f"Val Domain Loss: {val_domain_loss:.3f}", sep=" ║ ")
             self.model_saver.update(self.model, val_source_label_loss, self.epoch)
             if self.model_saver.should_stop_training():
