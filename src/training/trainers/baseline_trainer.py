@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, List
 import torch 
 from torch import nn
 from torch import optim
@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from models.abstract_model import AbstractModel
 from src.training.model_saver import ModelSaver
 from src.visualization.logger import Logger
+from src.utils.utils import to_device
 
 class BaselineTrainer:
     def __init__(
@@ -17,7 +18,8 @@ class BaselineTrainer:
             label_loss_function: Callable[torch.Tensor, torch.Tensor], 
             epochs:int=1000, 
             lr:float=0.01,
-            verbose: bool = True
+            verbose: bool = True,
+            device: torch.device = None
             ) -> None:
         self.model = model 
         self.source_train_loader = source_train_loader
@@ -25,9 +27,13 @@ class BaselineTrainer:
         self.label_loss_function = label_loss_function
         self.epochs = epochs
         self.logger = Logger(verbose)
+        self.device = device
         self.epoch = 0
         self.optimizer = optim.Adam(params=self.model.parameters(), lr=lr)
         self.model_saver = ModelSaver(True)
+
+    def to_device(self, *tensors: torch.Tensor):
+        return to_device(self.device, *tensors)
 
     def get_best_val_loss(self) -> float:
         return self.model_saver.best_loss
@@ -36,6 +42,7 @@ class BaselineTrainer:
         self.model.train()
         train_loss = 0
         for X_train_batch, y_train_batch in self.source_train_loader:
+            X_train_batch, y_train_batch = self.to_device(X_train_batch, y_train_batch)
             y_pred, _ = self.model(X_train_batch)
             y_train_batch_labels = y_train_batch[:, 0].long()
             label_loss = self.label_loss_function(y_pred, y_train_batch_labels)
@@ -53,6 +60,7 @@ class BaselineTrainer:
         source_val_loss = 0
         with torch.inference_mode():
             for X_source_val_batch, y_source_val_batch in self.source_val_loader:
+                X_source_val_batch, y_source_val_batch = self.to_device(X_source_val_batch, y_source_val_batch)
                 y_source_pred = self.model.predict(X_source_val_batch)
                 y_source_val_batch_labels = y_source_val_batch[:, 0].long()
                 source_label_loss = self.label_loss_function(y_source_pred, y_source_val_batch_labels)

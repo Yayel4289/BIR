@@ -4,7 +4,7 @@ from copy import deepcopy
 from models.abstract_model import AbstractModel
 
 class ModelSaver:
-    def __init__(self, early_stopping_enabled: bool, patience: int=200, delta: float=1e-4):
+    def __init__(self, early_stopping_enabled: bool, patience: int=100, delta: float=1e-4):
         self.early_stopping_enabled = early_stopping_enabled
         self.patience = patience
         self.delta = delta
@@ -14,7 +14,7 @@ class ModelSaver:
         self.stop_training = False
     
     def update(self, model: AbstractModel, val_loss: float, epoch: int):
-        if val_loss < self.best_loss - self.delta:
+        if val_loss < self.best_loss - self.delta or self.best_model_state_dict is None:
             self.best_loss = val_loss
             self.best_model_state_dict = deepcopy(model.state_dict())
             self.no_improvement_count = 0

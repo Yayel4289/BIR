@@ -14,14 +14,16 @@ class PCIDA_Trainer(CIDA_Trainer):
             lambda_config: AbstractLambdaConfig = ..., 
             epochs: int = 1000, 
             lr: float = 0.01, 
-            verbose: bool = True
+            verbose: bool = True,
+            device: torch.device = None
     ) -> None:
         super().__init__(
             model, 
             source_train_loader, source_val_loader, target_train_loader, target_val_loader, lambda_config, 
             epochs, 
             lr, 
-            verbose
+            verbose,
+            device=device
         )
 
     def _define_domain_loss_func(self) -> Callable[torch.Tensor, torch.Tensor]:

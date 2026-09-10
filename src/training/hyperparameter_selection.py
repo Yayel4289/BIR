@@ -22,13 +22,15 @@ def select_model_progressive_hyperparams(
         max_gamma: int=50, 
         min_max_grl_lambda: int=1,
         max_max_grl_lambda: int=15,
-        verbose: bool=False
+        verbose: bool=False,
+        device: torch.device = None,
+        **model_kwargs
         ) -> Tuple[float, float]:
     def objective(trial: optuna.Trial) -> float:
         gamma = trial.suggest_int("gamma", min_gamma, max_gamma)
         max_grl_lambda = trial.suggest_int("max_grl_lambda", min_max_grl_lambda, max_max_grl_lambda)
 
-        model = ModelClass(input_dim=2, output_dim=2)
+        model = ModelClass(device=device, **model_kwargs)
         trainer = TrainerClass(
             model,
             source_train_loader,
@@ -36,6 +38,7 @@ def select_model_progressive_hyperparams(
             target_train_loader,
             target_val_loader,
             lambda_config=ProgressiveLambdaConfig(max_grl_lambda, gamma),
+            device=device,
             verbose=verbose
         )
         trainer.train_model()
@@ -65,12 +68,14 @@ def select_model_fixed_grl_lambda(
         n_trials: int=30, 
         min_grl_lambda: float = 0.1,
         max_grl_lambda: float = 10,
-        verbose: bool=False
+        verbose: bool=False,
+        device: torch.device = None,
+        **model_kwargs
         ) -> float:
     def objective(trial: optuna.Trial) -> float:
         grl_lambda = trial.suggest_float("grl_lambda", min_grl_lambda, max_grl_lambda)
 
-        model = ModelClass(input_dim=2, output_dim=2)
+        model = ModelClass(device=device, **model_kwargs)
         trainer = TrainerClass(
             model,
             source_train_loader,
@@ -78,6 +83,7 @@ def select_model_fixed_grl_lambda(
             target_train_loader,
             target_val_loader,
             lambda_config=FixedLambdaConfig(grl_lambda),
+            device=device,
             verbose=verbose
         )
         trainer.train_model()
