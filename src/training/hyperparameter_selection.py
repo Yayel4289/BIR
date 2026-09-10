@@ -8,6 +8,7 @@ from src.training.trainers.dann_trainer import DANN_Trainer
 from src.visualization.logger import Logger
 from src.training.lambda_config.progressive_lambda_config import ProgressiveLambdaConfig
 from src.training.lambda_config.fixed_lambda_config import FixedLambdaConfig
+from typing import Dict
 
 def select_model_progressive_hyperparams(
         seed: int,
@@ -17,7 +18,7 @@ def select_model_progressive_hyperparams(
         source_val_loader: DataLoader,
         target_train_loader: DataLoader,
         target_val_loader: DataLoader,
-        n_trials: int=30, 
+        n_trials: int=1, 
         min_gamma: int=1, 
         max_gamma: int=50, 
         min_max_grl_lambda: int=1,
@@ -75,6 +76,7 @@ def select_model_fixed_grl_lambda(
         model_kwargs: Dict = {},
         loss_kwargs: Dict = {}
         ) -> float:
+    return 0.5
     def objective(trial: optuna.Trial) -> float:
         grl_lambda = trial.suggest_float("grl_lambda", min_grl_lambda, max_grl_lambda)
 

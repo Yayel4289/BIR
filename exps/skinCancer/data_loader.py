@@ -4,6 +4,7 @@ from pandas.api.types import CategoricalDtype
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
+from sklearn.utils import shuffle
 
 from src.data.data_loader_set import DataLoaderSet
 from src.data.data_loader import get_source_target_train_val_test_loaders_from_tensor, tensor_train_val_test_split
@@ -45,8 +46,8 @@ def normalize_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def split_source_target(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    df_source = df[df["age"] >  SOURCE_TARGET_AGE_SPLIT / MAX_AGE]
-    df_target = df[df["age"] <= SOURCE_TARGET_AGE_SPLIT / MAX_AGE]
+    df_source = df[df["age"] >  SOURCE_TARGET_AGE_SPLIT / MAX_AGE].copy()
+    df_target = df[df["age"] <= SOURCE_TARGET_AGE_SPLIT / MAX_AGE].copy()
     df_source["age"] = 1 - df_source["age"] # convention : close to 0
     df_target["age"] = 1 - df_target["age"] # convention : close to 1
     return df_source, df_target
@@ -69,6 +70,7 @@ def get_skin_cancer_data_loader_set(continuous: bool = True) -> DataLoaderSet:
     df = pd.read_csv(DATA_PATH + "hmnist_age_label.csv")
     df = filter_df_classes(df)
     df = normalize_df(df)
+    df = df.sample(frac=1).reset_index(drop=True) # shuffle
     df_source, df_target = split_source_target(df)
     if not continuous:
         df_source, df_target = make_domain_discrete(df_source, df_target)

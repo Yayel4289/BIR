@@ -43,7 +43,12 @@ def compute_model_f1_score_from_loader(model: AbstractModel, test_loader: DataLo
             X_test_batch, y_test_batch = to_device(device, X_test_batch, y_test_batch)
             y_test_batch_labels = y_test_batch[:, 0]
             prediction_probs = model.predict_probs(X_test_batch)
+
+            print("y_test_batch_labels: ", y_test_batch_labels)
+            print("prediction_probs: ", prediction_probs)
             predictions = torch.argmax(prediction_probs, dim=1)
+            print("predictions: ", predictions)
+            raise 
             f1.update(predictions, y_test_batch_labels)
     f1.compute()
     return f1._computed.item()

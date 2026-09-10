@@ -42,6 +42,7 @@ import sys
 import torch 
 from torch import nn
 import numpy as np 
+import pandas as pd
 
 from exps.skinCancer.data_loader import get_skin_cancer_data_loader_set
 from src.data.data_loader_set import DataLoaderSet
@@ -62,9 +63,10 @@ from src.training.lambda_config.fixed_lambda_config import FixedLambdaConfig
 from src.training.trainers.cida_trainer import CIDA_Trainer
 from src.training.trainers.pcida_trainer import PCIDA_Trainer
 from typing import Type, Dict, List, Tuple
+import sklearn
 
 DEFAULT_SEED = 42
-COMPARISON_SEEDS = [DEFAULT_SEED, 89, 0, 4289, 8942]
+COMPARISON_SEEDS = [DEFAULT_SEED] #, 89, 0, 4289, 8942]
 
 def get_trainer_model_from_model_name(formatted_model_name: str) -> Tuple[Type[DANN], Type[DANN_Trainer]]:
     acronym = formatted_model_name.upper()
@@ -158,7 +160,7 @@ def make_table_comparison(exp: str, device: torch.device, formatted_model_name: 
         data_loader_set_function = get_moons_data_loader_set
     elif exp == "skin-cancer":
         model_kwargs = {"input_dim": 3, "convolutional": True}
-        loss_kwargs = {"weight": torch.Tensor([6/7, 1/7])} # benign / cancer proportions
+        loss_kwargs = {"weight": torch.Tensor([1, 6])} # benign / cancer proportions
         data_loader_set_function = get_skin_cancer_data_loader_set
     models_config =  {
         "Baseline": {
@@ -274,6 +276,7 @@ def print_help_and_exit(optional_msg=""):
 def setup_seed(seed: int = DEFAULT_SEED) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
+    sklearn.utils.check_random_state(seed)
 
 def validate_model_params(formatted_model_name: str, mode_name: str, hyperparam_selection: bool) -> bool: # True if model mode, else False
     if formatted_model_name is None:

@@ -5,7 +5,7 @@ from src.training.trainers.cida_trainer import CIDA_Trainer
 from torch.utils.data import DataLoader
 from src.training.lambda_config.abstract_lambda_config import AbstractLambdaConfig
 import torch
-from typing import Callable
+from typing import Callable, Dict
 
 
 class PCIDA_Trainer(CIDA_Trainer):

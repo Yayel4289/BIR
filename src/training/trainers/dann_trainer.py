@@ -8,6 +8,7 @@ from src.training.trainers.baseline_trainer import BaselineTrainer
 from src.training.lambda_config.abstract_lambda_config import AbstractLambdaConfig
 from src.training.lambda_config.progressive_lambda_config import ProgressiveLambdaConfig
 from src.training.model_saver import ModelSaver
+from typing import Dict
 
 class DANN_Trainer(BaselineTrainer):
     def __init__(
@@ -118,6 +119,9 @@ class DANN_Trainer(BaselineTrainer):
             self.model_saver.update(self.model, val_source_label_loss, self.epoch)
             if self.model_saver.should_stop_training():
                 self.logger(f"Early stopping at epoch {self.epoch}")
+                break
+
+            if self.epoch == 20:
                 break
 
         self.model.load_state_dict(self.model_saver.get_best_model_state_dict())

@@ -57,7 +57,7 @@ echo -n "This run started on: "
 date
 
 cd ../../
-python run_exp.py --skin-cancer --comparison --model baseline
+python -m run_exp --skin-cancer --comparison --model dann --mode fixed
 
 echo -n "This run completed on: "
 date
