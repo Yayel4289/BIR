@@ -37,7 +37,7 @@ def compute_model_target_f1_score(model: AbstractModel, source_test_loader: Data
 
 def compute_model_f1_score_from_loader(model: AbstractModel, test_loader: DataLoader, device: torch.device = None, **kwargs) -> float:
     model.eval()
-    f1 = F1Score(**kwargs) # 'binary' or 'multiclass' + num_classes if necessary
+    f1 = F1Score(average="macro", **kwargs) # 'binary' or 'multiclass' + num_classes if necessary
     with torch.inference_mode():
         for (X_test_batch, y_test_batch) in test_loader:
             X_test_batch, y_test_batch = to_device(device, X_test_batch, y_test_batch)
