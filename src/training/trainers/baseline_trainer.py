@@ -41,7 +41,9 @@ class BaselineTrainer:
     def _train_epoch(self) -> float: 
         self.model.train()
         train_loss = 0
-        for X_train_batch, y_train_batch in self.source_train_loader:
+        for i in range(len(self.source_train_loader)):
+        #for X_train_batch, y_train_batch in self.source_train_loader:
+            X_train_batch, y_train_batch = next(iter(self.source_train_loader))
             X_train_batch, y_train_batch = self.to_device(X_train_batch, y_train_batch)
             y_pred, _ = self.model(X_train_batch)
             y_train_batch_labels = y_train_batch[:, 0].long()
@@ -52,20 +54,22 @@ class BaselineTrainer:
             self.optimizer.step()
             train_loss += label_loss.item()
 
-        mean_train_loss = train_loss / len(self.source_train_loader)
+        mean_train_loss = train_loss / (i+1)
         return mean_train_loss
 
     def _evaluate_epoch(self) -> float:
         self.model.eval()
         source_val_loss = 0
         with torch.inference_mode():
-            for X_source_val_batch, y_source_val_batch in self.source_val_loader:
+            for i in range(len(self.source_val_loader)):
+            #for X_source_val_batch, y_source_val_batch in self.source_val_loader:
+                X_source_val_batch, y_source_val_batch = next(iter(self.source_val_loader))
                 X_source_val_batch, y_source_val_batch = self.to_device(X_source_val_batch, y_source_val_batch)
                 y_source_pred = self.model.predict(X_source_val_batch)
                 y_source_val_batch_labels = y_source_val_batch[:, 0].long()
                 source_label_loss = self.label_loss_function(y_source_pred, y_source_val_batch_labels)
                 source_val_loss += source_label_loss.item()
-        mean_source_val_loss = source_val_loss / len(self.source_val_loader)
+        mean_source_val_loss = source_val_loss / (i+1)
         return mean_source_val_loss
 
     def train_model(self) -> None:

@@ -17,10 +17,12 @@ def compute_model_h_divergence(model: DANN, source_test_loader: DataLoader, targ
     correct_target = 0
     model.eval()
     with torch.inference_mode():
+        #for i in range(len(source_test_loader)):
         for (X_source_test_batch, _) in source_test_loader:
             X_source_test_batch = to_device(device, X_source_test_batch)
             prediction_probs = model.predict_domain_prob(X_source_test_batch)
             correct_source += (prediction_probs  < 0.5).long().sum().item()
+        #for i in range(len(target_test_loader)):
         for (X_target_test_batch, _) in target_test_loader:
             X_target_test_batch = to_device(device, X_target_test_batch)
             prediction_probs = model.predict_domain_prob(X_target_test_batch)
@@ -39,6 +41,7 @@ def compute_model_f1_score_from_loader(model: AbstractModel, test_loader: DataLo
     model.eval()
     f1 = F1Score(task="binary", average="macro")
     with torch.inference_mode():
+        #for i in range(len(test_loader)):
         for (X_test_batch, y_test_batch) in test_loader:
             X_test_batch, y_test_batch = to_device(device, X_test_batch, y_test_batch)
             y_test_batch_labels = y_test_batch[:, 0]

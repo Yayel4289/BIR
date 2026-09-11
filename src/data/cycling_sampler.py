@@ -14,4 +14,4 @@ class CyclingSampler(Sampler):
         return iter(indices)
     
     def __len__(self):
-        return self.batch_size
+        return len(self.data_source)

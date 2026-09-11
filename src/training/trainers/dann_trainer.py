@@ -45,7 +45,10 @@ class DANN_Trainer(BaselineTrainer):
         epoch_source_domain_loss = 0
         epoch_target_domain_loss = 0
         epoch_domain_loss = 0
-        for (X_source_train_batch, y_source_train_batch) in self.source_train_loader:
+
+        for i in range(max(len(self.source_train_loader), len(self.target_train_loader))):
+        #for (X_source_train_batch, y_source_train_batch) in self.source_train_loader:
+            X_source_train_batch, y_source_train_batch = next(iter(self.source_train_loader))
             X_target_train_batch, y_target_train_batch = next(iter(self.target_train_loader))
             X_source_train_batch, y_source_train_batch, X_target_train_batch, y_target_train_batch = self.to_device(
                 X_source_train_batch, y_source_train_batch,
@@ -73,10 +76,10 @@ class DANN_Trainer(BaselineTrainer):
             epoch_target_domain_loss += target_domain_loss.item()
             epoch_domain_loss += domain_loss.item()
 
-        mean_source_label_loss = epoch_source_label_loss / len(self.source_train_loader)
-        mean_domain_loss = epoch_domain_loss / len(self.source_train_loader)
-        mean_source_domain_loss = epoch_source_domain_loss / len(self.source_train_loader)
-        mean_target_domain_loss = epoch_target_domain_loss / len(self.source_train_loader)
+        mean_source_label_loss = epoch_source_label_loss / (i + 1)
+        mean_domain_loss = epoch_domain_loss / (i + 1)
+        mean_source_domain_loss = epoch_source_domain_loss / (i + 1)
+        mean_target_domain_loss = epoch_target_domain_loss / (i + 1)
         return mean_source_label_loss, mean_domain_loss, mean_source_domain_loss, mean_target_domain_loss    
 
     
@@ -85,7 +88,9 @@ class DANN_Trainer(BaselineTrainer):
         val_source_label_loss = 0
         val_domain_loss = 0
         with torch.inference_mode():
-            for (X_source_val_batch, y_source_val_batch) in self.source_val_loader:
+            for i in range(max(len(self.source_val_loader), len(self.target_val_loader))):
+            #for (X_source_val_batch, y_source_val_batch) in self.source_val_loader:
+                X_source_val_batch, y_source_val_batch = next(iter(self.source_val_loader))
                 X_target_val_batch, y_target_val_batch = next(iter(self.target_val_loader))
                 X_source_val_batch, y_source_val_batch, X_target_val_batch, y_target_val_batch = self.to_device(
                     X_source_val_batch, y_source_val_batch,
@@ -103,8 +108,8 @@ class DANN_Trainer(BaselineTrainer):
                 val_source_label_loss += source_label_loss.item()
                 val_domain_loss -= domain_loss.item()
                 
-        mean_val_source_label_loss = val_source_label_loss / len(self.source_val_loader)
-        mean_val_domain_loss = val_domain_loss / len(self.source_val_loader)
+        mean_val_source_label_loss = val_source_label_loss / (i + 1)
+        mean_val_domain_loss = val_domain_loss / (i + 1)
         return mean_val_source_label_loss, mean_val_domain_loss
 
 
