@@ -2,7 +2,6 @@ from models.cida.cida import CIDA
 import torch
 from torch import nn
 
-
 class PCIDA(CIDA):
     def __init__(self, input_dim: int = 2, output_dim: int = 2, hidden_dim: int = 32, convolutional: bool = False, _domain_output_dim: int = 2, device: torch.device = None) -> None:
         super().__init__(input_dim, output_dim, hidden_dim, convolutional, _domain_output_dim, device)
