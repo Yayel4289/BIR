@@ -64,7 +64,13 @@ def make_metrics_dict(h_divergence: bool=True):
 def has_model_h_divergence(models_config, model_name):
     return models_config[model_name]["metrics"].get("h_divergences") is not None
 
-def update_model_metrics_lists(model_metrics, model: AbstractModel, source_test_loader: DataLoader, target_test_loader: DataLoader, device: torch.device):
+def update_model_metrics_lists(
+        model_metrics, 
+        model: AbstractModel, 
+        source_test_loader: DataLoader, 
+        target_test_loader: DataLoader, 
+        device: torch.device
+    ) -> None:
     for metric in model_metrics:
         computed_metric = model_metrics[metric]["function"](model, source_test_loader, target_test_loader, device=device)
         model_metrics[metric]["list"].append(computed_metric)

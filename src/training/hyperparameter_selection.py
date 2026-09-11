@@ -23,6 +23,7 @@ def select_model_progressive_hyperparams(
         max_gamma: int=50, 
         min_max_grl_lambda: int=1,
         max_max_grl_lambda: int=15,
+        epochs: int = 1000,
         verbose: bool=False,
         device: torch.device = None,
         model_kwargs: Dict = {},
@@ -41,6 +42,7 @@ def select_model_progressive_hyperparams(
             target_val_loader,
             lambda_config=ProgressiveLambdaConfig(max_grl_lambda, gamma),
             device=device,
+            epochs=epochs,
             loss_kwargs=loss_kwargs,
             verbose=verbose
         )
@@ -71,6 +73,7 @@ def select_model_fixed_grl_lambda(
         n_trials: int=30, 
         min_grl_lambda: float = 0,
         max_grl_lambda: float = 10,
+        epochs: int = 1000,
         verbose: bool=False,
         device: torch.device = None,
         model_kwargs: Dict = {},
@@ -88,6 +91,7 @@ def select_model_fixed_grl_lambda(
             target_val_loader,
             lambda_config=FixedLambdaConfig(grl_lambda),
             device=device,
+            epochs=epochs,
             loss_kwargs=loss_kwargs,
             verbose=verbose
         )

@@ -66,7 +66,7 @@ from typing import Type, Dict, List, Tuple
 import sklearn
 
 DEFAULT_SEED = 42
-COMPARISON_SEEDS = [DEFAULT_SEED, 89, 0, 4289, 8942]
+COMPARISON_SEEDS = [DEFAULT_SEED, 89, 0, 4289]
 
 def get_trainer_model_from_model_name(formatted_model_name: str) -> Tuple[Type[DANN], Type[DANN_Trainer]]:
     acronym = formatted_model_name.upper()
@@ -76,7 +76,15 @@ def is_model_continuous(formatted_model_name: str) -> bool:
     cida = "cida"
     return cida in formatted_model_name or cida.upper() in formatted_model_name
 
-def run_baseline(data_loader_set: DataLoaderSet, plot: bool = True, verbose: bool = True, device: torch.device = None, loss_kwargs: Dict = {}, model_kwargs: Dict = {}) -> Classifier:
+def run_baseline(
+        data_loader_set: DataLoaderSet, 
+        plot: bool = True, 
+        verbose: bool = True, 
+        device: torch.device = None, 
+        loss_kwargs: Dict = {}, 
+        training_kwargs: Dict = {},
+        model_kwargs: Dict = {}
+        ) -> Classifier:
     source_train_loader, source_val_loader, source_test_loader, _, _, target_test_loader = data_loader_set
 
     baseline = Classifier(device=device, **model_kwargs)
@@ -86,6 +94,7 @@ def run_baseline(data_loader_set: DataLoaderSet, plot: bool = True, verbose: boo
         source_val_loader, 
         nn.CrossEntropyLoss(**loss_kwargs),
         verbose=verbose,
+        epochs=training_kwargs["epochs"],
         device=device
     )
     baseline_trainer.train_model()
@@ -98,11 +107,22 @@ def run_baseline(data_loader_set: DataLoaderSet, plot: bool = True, verbose: boo
         plot_model(data_loader_set.get_test_pts(), baseline)
     return baseline
 
-def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: str, mode: str, hyperparam_selection: bool, plot: bool = True, verbose: bool = True, device: torch.device = None, model_kwargs: Dict = {}, loss_kwargs: Dict = {}) -> DANN:
+def run_adversarial_model(
+        data_loader_set: DataLoaderSet, 
+        formatted_model_name: str, 
+        mode: str, 
+        hyperparam_selection: bool, 
+        plot: bool = True, 
+        verbose: bool = True, 
+        device: torch.device = None, 
+        model_kwargs: Dict = {}, 
+        training_kwargs: Dict = {},
+        loss_kwargs: Dict = {}
+        ) -> DANN:
     source_train_loader, source_val_loader, source_test_loader, target_train_loader, target_val_loader, target_test_loader = data_loader_set
     ModelCass, TrainerClass = get_trainer_model_from_model_name(formatted_model_name)
     
-    kwargs = {}
+    kwargs = {"epochs": training_kwargs["epochs"]}
     if hyperparam_selection:
         if mode == "fixed":
             grl_lambda = select_model_fixed_grl_lambda(
@@ -112,9 +132,10 @@ def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: 
                 verbose=verbose,
                 device=device,
                 loss_kwargs=loss_kwargs,
-                model_kwargs=model_kwargs
+                model_kwargs=model_kwargs,
+                **training_kwargs
             )
-            kwargs = {"lambda_config": FixedLambdaConfig(grl_lambda)}
+            kwargs["lambda_config"] = FixedLambdaConfig(grl_lambda)
         elif mode == "progressive":
             max_grl_lambda, gamma = select_model_progressive_hyperparams(
                 DEFAULT_SEED, 
@@ -123,11 +144,12 @@ def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: 
                 verbose=verbose,
                 device=device,
                 loss_kwargs=loss_kwargs,
-                model_kwargs=model_kwargs
+                model_kwargs=model_kwargs,
+                **training_kwargs
             )
-            kwargs = {"lambda_config": ProgressiveLambdaConfig(max_grl_lambda, gamma)}
+            kwargs["lambda_config"] = ProgressiveLambdaConfig(max_grl_lambda, gamma)
     else:
-        kwargs = {"lambda_config": ProgressiveLambdaConfig(1, 10) if mode == "progressive" else FixedLambdaConfig(1)}
+        kwargs["lambda_config"] = ProgressiveLambdaConfig(1, 10) if mode == "progressive" else FixedLambdaConfig(5)
 
     model = ModelCass(device=device, **model_kwargs)
     trainer = TrainerClass(
@@ -152,7 +174,16 @@ def run_adversarial_model(data_loader_set: DataLoaderSet, formatted_model_name: 
     return model
 
 
-def make_table_comparison(exp: str, device: torch.device, formatted_model_name: str = None, mode_name: str = None, table: bool = True, model_kwargs: Dict = {}, loss_kwargs: Dict = {}) -> None:
+def make_table_comparison(
+        exp: str, 
+        device: torch.device, 
+        formatted_model_name: str = None, 
+        mode_name: str = None, 
+        table: bool = True, 
+        model_kwargs: Dict = {}, 
+        training_kwargs: Dict = {},
+        loss_kwargs: Dict = {}
+    ) -> None:
     data_loader_set_function: Callable[bool, DataLoaderSet]
     if exp == "moons":
         data_loader_set_function = get_moons_data_loader_set
@@ -240,8 +271,23 @@ def make_table_comparison(exp: str, device: torch.device, formatted_model_name: 
             run_func = models_config[model_name]["run_func"]
             args = models_config[model_name].get("args")
             kwargs = models_config[model_name]["kwargs"]
-            model = run_func(data_loader_set, device=device, model_kwargs=model_kwargs, loss_kwargs=loss_kwargs, **kwargs) if args is None else \
-                    run_func(data_loader_set, *args, device=device, model_kwargs=model_kwargs, loss_kwargs=loss_kwargs, **kwargs)
+            model = run_func(
+                data_loader_set, 
+                device=device, 
+                model_kwargs=model_kwargs, 
+                training_kwargs=training_kwargs, 
+                loss_kwargs=loss_kwargs, 
+                **kwargs
+            ) if args is None else \
+                    run_func(
+                data_loader_set, 
+                *args, 
+                device=device, 
+                model_kwargs=model_kwargs, 
+                training_kwargs=training_kwargs, 
+                loss_kwargs=loss_kwargs, 
+                **kwargs
+            )
             
             model_metrics = models_config[model_name]["metrics"]
             source_test_loader, target_test_loader = data_loader_set.get_test_loaders()
@@ -305,13 +351,23 @@ def main(args) -> None:
         plot_pts_only(points)
     elif model_mode:
         model_kwargs = {}
+        training_kwargs = {"epochs": 1000, "n_trials": 15}
         loss_kwargs = {}
         if exp == "skin-cancer":
             model_kwargs = {"input_dim": 3, "convolutional": True}
+            training_kwargs = {"epochs": 500, "n_trials": 15}
             loss_kwargs = {"weight": torch.Tensor([1, 6])} # benign / cancer inverse proportions
 
         if args["--comparison"]:
-            make_table_comparison(exp, device, formatted_model_name=formatted_model_name, mode_name=mode_name, model_kwargs=model_kwargs, loss_kwargs=loss_kwargs, table=False)
+            make_table_comparison(
+                exp, 
+                device, 
+                formatted_model_name=formatted_model_name, 
+                mode_name=mode_name, 
+                model_kwargs=model_kwargs, 
+                training_kwargs=training_kwargs,
+                loss_kwargs=loss_kwargs, 
+                table=False)
             sys.exit(0)
         continuous = is_model_continuous(formatted_model_name)
         data_loader_set: DataLoaderSet
@@ -321,9 +377,18 @@ def main(args) -> None:
             data_loader_set = get_skin_cancer_data_loader_set(continuous=continuous)
 
         if formatted_model_name == "baseline":
-            run_baseline(data_loader_set, device=device, model_kwargs=model_kwargs, loss_kwargs=loss_kwargs)
+            run_baseline(data_loader_set, device=device, model_kwargs=model_kwargs, training_kwargs=training_kwargs, loss_kwargs=loss_kwargs)
         else:
-            run_adversarial_model(data_loader_set, formatted_model_name, mode_name, hyperparam_selection, device=device, model_kwargs=model_kwargs, loss_kwargs=loss_kwargs)
+            run_adversarial_model(
+                data_loader_set, 
+                formatted_model_name, 
+                mode_name, 
+                hyperparam_selection, 
+                device=device, 
+                model_kwargs=model_kwargs, 
+                training_kwargs=training_kwargs,
+                loss_kwargs=loss_kwargs
+            )
     elif args["--comparison"]:
         make_table_comparison(exp, device)
         sys.exit(0)
