@@ -29,15 +29,18 @@ class AbstractModel(nn.Module, ABC):
 
     def _define_convolutional_feature_extractor(self, input_dim: int, hidden_dim: int):
         return nn.Sequential(
-            nn.Conv2d(input_dim, hidden_dim // 2, kernel_size=3, padding=1),
+            nn.Conv2d(input_dim, hidden_dim // 2, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(hidden_dim // 2),
             nn.ReLU(),
-            nn.MaxPool2d(2), # W,H /= 2
+            nn.MaxPool2d(2),
 
-            nn.Conv2d(hidden_dim // 2, hidden_dim, kernel_size=3, padding=1),
+            nn.Conv2d(hidden_dim // 2, hidden_dim, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(hidden_dim),
             nn.ReLU(),
-            nn.MaxPool2d(2), #W,H /= 2
+            nn.MaxPool2d(2),
 
-            nn.Conv2d(hidden_dim, hidden_dim, kernel_size=3, padding=1),
+            nn.Conv2d(hidden_dim, hidden_dim, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(hidden_dim),
             nn.ReLU(),
 
             nn.AdaptiveAvgPool2d(1),
