@@ -45,8 +45,11 @@ def normalize_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def split_source_target(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    df_source = df[df["age"] >  SOURCE_TARGET_AGE_SPLIT / MAX_AGE].copy()
-    df_target = df[df["age"] <= SOURCE_TARGET_AGE_SPLIT / MAX_AGE].copy()
+    quantile_age = df["age"].quantile(0.75)
+    #df_source = df[df["age"] >  SOURCE_TARGET_AGE_SPLIT / MAX_AGE].copy()
+    #df_target = df[df["age"] <= SOURCE_TARGET_AGE_SPLIT / MAX_AGE].copy()
+    df_source = df[df["age"] >= quantile_age].copy()
+    df_target = df[df["age"] <  quantile_age].copy()
     df_source["age"] = 1 - df_source["age"] # convention : close to 0
     df_target["age"] = 1 - df_target["age"] # convention : close to 1
     return df_source, df_target
@@ -79,5 +82,5 @@ def get_skin_cancer_data_loader_set(continuous: bool = True) -> DataLoaderSet:
         X_source_tensor, y_source_tensor,
         X_target_tensor, y_target_tensor
     )
-    return DataLoaderSet(source_train_loader, target_train_loader, source_val_loader, target_val_loader, source_test_loader, target_test_loader)
+    return DataLoaderSet(source_train_loader, source_val_loader, source_test_loader, target_train_loader, target_val_loader, target_test_loader)
 

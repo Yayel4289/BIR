@@ -149,7 +149,7 @@ def run_adversarial_model(
             )
             kwargs["lambda_config"] = ProgressiveLambdaConfig(max_grl_lambda, gamma)
     else:
-        kwargs["lambda_config"] = ProgressiveLambdaConfig(1, 10) if mode == "progressive" else FixedLambdaConfig(5)
+        kwargs["lambda_config"] = ProgressiveLambdaConfig(1, 10) if mode == "progressive" else FixedLambdaConfig(1)
 
     model = ModelCass(device=device, **model_kwargs)
     trainer = TrainerClass(
