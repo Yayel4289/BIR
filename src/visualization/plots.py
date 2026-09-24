@@ -5,10 +5,21 @@ from models.abstract_model import AbstractModel
 # matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
+from matplotlib.lines import Line2D
 import torch
 import numpy as np
 
 from exps.points_classification.utils.point import Point
+
+ALPHA = 0.5
+
+def circle_handle(color, label, size=50, alpha=ALPHA):
+    return plt.scatter([], [], color=color, s=size, alpha=alpha, label=label)
+
+def get_pt_label(label: int, domain: int):
+    pt_label = "B" if label else "A"
+    pt_domain = "Source" if domain < 0.5 else "Target"
+    return f"{pt_domain} domain, Class {pt_label}"
 
 def plot_pts(points: List[Point], continuous: bool = False, show_target_label=True):
     plt.figure(figsize=(12, 8))
@@ -20,12 +31,24 @@ def plot_pts(points: List[Point], continuous: bool = False, show_target_label=Tr
     norm = Normalize(0, 1)
 
     for p in points:
-        plt.scatter(p.x1, p.x2, alpha=0.5, color=color_map[p.label](norm(p.domain)))
+        plt.scatter(p.x1, p.x2, alpha=ALPHA, color=color_map[p.label](norm(p.domain)))
+
+    custom_handles = [
+        circle_handle(source_colors[0], get_pt_label(0, 0)),
+        circle_handle(source_colors[1], get_pt_label(1, 0)),
+    ]
+    if show_target_label:
+        custom_handles.extend([
+            circle_handle(target_colors[0], get_pt_label(0, 1)),
+            circle_handle(target_colors[1], get_pt_label(1, 1)),
+        ])
+    else:
+        custom_handles.append(circle_handle("black", "Target domain"))
 
     plt.xlabel("X1")
     plt.ylabel("X2")
     plt.grid(True)
-    #plt.legend()
+    plt.legend(handles=custom_handles, loc="lower right")
     plt.axis("equal")
 
 def plot_decision_boundary(points: List[Point], model: AbstractModel):
